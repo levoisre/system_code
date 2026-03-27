@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// REQUIRED: Ensure this points to your login.dart file
+import '../login_page/login.dart'; 
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -52,7 +54,6 @@ class ProfilePage extends StatelessWidget {
             
             const SizedBox(height: 30),
 
-            // STATS GRID: Uses Expanded to occupy all extra horizontal space
             Row(
               children: [
                 _buildStatBox("02", "QUESTS", Icons.auto_awesome),
@@ -80,6 +81,7 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
+            // --- FUNCTIONAL LOGOUT BUTTON ---
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -104,6 +106,42 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
+  // --- LOGOUT DIALOG LOGIC ---
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold, color: darkNavy)),
+        content: const Text('Are you sure you want to end your session?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('STAY', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // This clears the navigation history and moves to LoginPage
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('LOGOUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- UI HELPER METHODS (Kept from your original code) ---
+
   Widget _buildAchievementRow() {
     final List<Map<String, dynamic>> achievements = [
       {"icon": Icons.speed, "title": "Speedster", "desc": "Top 5 in Quiz"},
@@ -115,7 +153,6 @@ class ProfilePage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: achievements.map((item) {
-        // Expanded ensures each card takes up equal portions of the Row's width
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -145,17 +182,9 @@ class ProfilePage extends StatelessWidget {
         children: [
           Icon(icon, color: neonBlue, size: 24),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: darkNavy),
-            textAlign: TextAlign.center,
-          ),
+          Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: darkNavy), textAlign: TextAlign.center),
           const SizedBox(height: 4),
-          Text(
-            desc,
-            style: TextStyle(fontSize: 8, color: darkNavy.withValues(alpha: 0.5)),
-            textAlign: TextAlign.center,
-          ),
+          Text(desc, style: TextStyle(fontSize: 8, color: darkNavy.withValues(alpha: 0.5)), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -259,26 +288,6 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to end your session?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('STAY')),
-          ElevatedButton(
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('LOGOUT', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
   }
 }

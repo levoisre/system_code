@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Ensure these imports match your actual folder/file names
 import 'package:smart_classroom_facilitator_project/student_ui/home_page/home.dart';
 import 'package:smart_classroom_facilitator_project/student_ui/attendance_page/attendance_history.dart';
 import 'package:smart_classroom_facilitator_project/student_ui/grade_page/grade_history.dart';
@@ -33,41 +32,31 @@ class _StudentIndexState extends State<StudentIndex> {
 
   @override
   Widget build(BuildContext context) {
-    // Brand Color
-    const Color darkNavy = Color(0xFF00084D);
+    // Exact STI Navy from your design
+    const Color darkNavy = Color(0xFF0C1446);
 
     return Scaffold(
+      // IndexedStack prevents the pages from reloading every time you click a tab
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              // FIXED: Changed .withOpacity(0.1) to .withValues(alpha: 0.1)
-              color: Colors.black.withValues(alpha: 0.1), 
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: darkNavy,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white54,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          // Added a modern touch with labels matching your design
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Attendance'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_rounded), label: 'Grades'),
-            BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Assessment'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profiles'),
-          ],
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: darkNavy,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white54,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Attendance'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment_rounded), label: 'Grades'),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Assessment'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profiles'),
+        ],
       ),
     );
   }

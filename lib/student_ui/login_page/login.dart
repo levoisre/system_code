@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../index.dart'; // IMPORTANT: Navigate to Index, not Home
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -8,104 +9,122 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Brand Colors from your screenshots
+  final TextEditingController _studentNumberController = TextEditingController();
+  final TextEditingController _classCodeController = TextEditingController();
+
   static const Color darkNavy = Color(0xFF0C1446);
-  static const Color bgLightGrey = Color(0xFFE5E5E5);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgLightGrey,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // --- 1. TITLE SECTION ---
-              const Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 60, 
-                  fontWeight: FontWeight.bold, 
-                  color: darkNavy, 
-                  fontFamily: 'serif' // Using serif for that classic look
-                ),
+      backgroundColor: const Color(0xFFE8E8E8), 
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              'Login',
+              style: TextStyle(
+                fontSize: 60,
+                fontWeight: FontWeight.bold,
+                color: darkNavy,
+                fontFamily: 'serif',
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Enter your details to access your class',
-                style: TextStyle(
-                  fontSize: 14, 
-                  color: Colors.black87, 
-                  fontFamily: 'serif'
-                ),
-                textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            
+            const Text(
+              'Enter your details to access your class',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                fontFamily: 'serif',
               ),
-              const SizedBox(height: 45),
+            ),
+            const SizedBox(height: 30),
 
-              // --- 2. INPUT FIELDS ---
-              _buildModernTextField(
-                hint: "Student Number", 
-                icon: Icons.person_rounded
-              ),
-              const SizedBox(height: 20),
-              _buildModernTextField(
-                hint: "Class Code", 
-                icon: Icons.lock_outline_rounded
-              ),
-              
-              const SizedBox(height: 45),
+            _buildInputBox(
+              controller: _studentNumberController,
+              hint: 'Student Number',
+              icon: Icons.person,
+            ),
+            const SizedBox(height: 15),
 
-              // --- 3. EXACT PILL-SHAPED JOIN BUTTON ---
-              SizedBox(
-                width: 200, // Fixed width to match the screenshot proportion
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Functional Routing to Index
-                    Navigator.pushReplacementNamed(context, '/home');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkNavy,
-                    foregroundColor: Colors.white,
-                    elevation: 4,
-                    // StadiumBorder creates the perfect pill shape from your image
-                    shape: const StadiumBorder(), 
-                  ),
-                  child: const Text(
-                    "JOIN CLASS",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold, 
-                      fontSize: 15, 
-                      letterSpacing: 1.0
-                    ),
+            _buildInputBox(
+              controller: _classCodeController,
+              hint: 'Class Code',
+              icon: Icons.lock_outline,
+              isPassword: true,
+            ),
+            const SizedBox(height: 40),
+
+            // --- OPTIMIZED JOIN CLASS BUTTON ---
+            SizedBox(
+              width: 180, 
+              height: 45,
+              child: ElevatedButton(
+                onPressed: () async {
+                  // 1. Capture Navigator BEFORE the await delay
+                  final navigator = Navigator.of(context);
+
+                  // 2. Small delay to allow ripple animation to finish (Fixes Lag)
+                  await Future.delayed(const Duration(milliseconds: 150));
+
+                  // 3. MANDATORY: Check if the widget is still in the tree
+                  if (!mounted) return;
+
+                  // 4. USE the captured navigator (This clears the linter error)
+                  navigator.pushReplacement(
+                    MaterialPageRoute(builder: (context) => const StudentIndex()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: darkNavy,
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  elevation: 5,
+                ),
+                child: const Text(
+                  'JOIN CLASS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 1.1,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // --- TEXTFIELD HELPER ---
-  Widget _buildModernTextField({required String hint, required IconData icon}) {
+  // --- HELPER FUNCTION FOR INPUT BOXES ---
+  Widget _buildInputBox({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA), 
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black87, width: 1.2),
+        color: const Color(0xFFF7F9FB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black54, width: 1),
       ),
       child: TextField(
+        controller: controller,
+        obscureText: isPassword,
         style: const TextStyle(fontFamily: 'serif'),
-        cursorColor: darkNavy,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black45, fontFamily: 'serif'),
-          prefixIcon: Icon(icon, color: darkNavy, size: 24),
-          border: InputBorder.none,
+          hintStyle: const TextStyle(color: Colors.black54, fontSize: 16),
+          prefixIcon: Icon(icon, color: darkNavy, size: 28),
+          border: InputBorder.none, 
           contentPadding: const EdgeInsets.symmetric(vertical: 15),
         ),
       ),

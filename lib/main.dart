@@ -1,39 +1,137 @@
 import 'package:flutter/material.dart';
-// --- THE KEY FIX: Import the index file so StudentIndex is recognized ---
-import 'package:smart_classroom_facilitator_project/student_ui/index.dart'; 
-import 'package:smart_classroom_facilitator_project/student_ui/login_page/login.dart';
+
+// --- 1. PORTAL IMPORTS ---
+// Points to your Student Login Page
+import 'student_ui/login_page/login.dart' as student;
+// Points to your Instructor Login Page
+import 'instructor_ui/login_page/login.dart' as instructor;
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SmartClassroomApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SmartClassroomApp extends StatelessWidget {
+  const SmartClassroomApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Classroom Facilitator',
-      
-      // Modern Theme Setup
       theme: ThemeData(
+        primaryColor: const Color(0xFF0C1446),
+        scaffoldBackgroundColor: const Color(0xFFE0E0E0),
+        fontFamily: 'serif', // STI-style serif branding
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00084D),
-          primary: const Color(0xFF00084D),
-        ),
-        fontFamily: 'serif', 
       ),
+      home: const RoleSelectionPage(),
+    );
+  }
+}
 
-      // 1. Initial Route: The app will start at the Login Screen
-      initialRoute: '/login', 
+class RoleSelectionPage extends StatelessWidget {
+  const RoleSelectionPage({super.key});
 
-      // 2. Route Map: Defines the nicknames for your pages
-      routes: {
-        '/login': (context) => const LoginPage(),    
-        '/home': (context) => const StudentIndex(),  
-      },
+  static const Color darkNavy = Color(0xFF0C1446);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          margin: const EdgeInsets.all(30),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 50),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F0F0),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'WELCOME',
+                style: TextStyle(
+                  fontSize: 32, 
+                  fontWeight: FontWeight.bold, 
+                  letterSpacing: 1.2,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Select your portal to continue',
+                style: TextStyle(color: Colors.black54, fontSize: 14),
+              ),
+              const SizedBox(height: 50),
+
+              // --- BUTTON TO STUDENT LOGIN ---
+              _buildRoleButton(
+                context,
+                label: "STUDENT PORTAL",
+                icon: Icons.school_outlined,
+                destination: const student.LoginPage(), 
+              ),
+
+              const SizedBox(height: 20),
+
+              // --- BUTTON TO INSTRUCTOR LOGIN ---
+              _buildRoleButton(
+                context,
+                label: "INSTRUCTOR PORTAL",
+                icon: Icons.admin_panel_settings_outlined,
+                destination: const instructor.InstructorLoginPage(), 
+              ),
+              
+              const SizedBox(height: 40),
+              const Text(
+                "STI College - Thesis 2026",
+                style: TextStyle(fontSize: 11, color: Colors.black26),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- HELPER FUNCTION WITH NAMED PARAMETERS ---
+  Widget _buildRoleButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Widget destination,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.white, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white, 
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: darkNavy,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          elevation: 4,
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => destination),
+          );
+        },
+      ),
     );
   }
 }
