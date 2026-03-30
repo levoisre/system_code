@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/home_page/home.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/attendance_page/attendance_history.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/grade_page/grade_history.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessments_list.dart'; 
-import 'package:smart_classroom_facilitator_project/student_ui/profile_page/profile.dart';
+
+// 1. IMPORT SECTION
+import 'home_page/home.dart';
+import 'attendance_page/attendance_history.dart';
+import 'grade_page/grade_history.dart'; 
+import 'assessment_page/assessments_list.dart'; 
+import 'profile_page/profile.dart';
 
 class StudentIndex extends StatefulWidget {
   const StudentIndex({super.key});
@@ -13,50 +15,80 @@ class StudentIndex extends StatefulWidget {
 }
 
 class _StudentIndexState extends State<StudentIndex> {
+  // Original Navy Blue Theme
+  static const Color originalNavy = Color(0xFF000051); 
   int _selectedIndex = 0;
 
-  // The list of pages for the bottom navigation
+  // 2. PAGE LIST - Updated with exact class names from your screenshots
   final List<Widget> _pages = [
-    const StudentHome(),       
-    const AttendanceHistory(), 
-    const GradesHistoryPage(), 
-    const AssessmentPage(),    
-    const ProfilePage(),       
+    const StudentHome(),               
+    const StudentAttendanceHistory(),  
+    const GradesHistoryPage(), // Matches class in grade_history.dart
+    const AssessmentPage(),    // Matches class in assessments_list.dart
+    const ProfilePage(),       // Matches class in profile.dart
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    // Exact STI Navy from your design
-    const Color darkNavy = Color(0xFF0C1446);
-
     return Scaffold(
-      // IndexedStack prevents the pages from reloading every time you click a tab
+      // IndexedStack preserves the state of each tab
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: darkNavy,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white54,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Attendance'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment_rounded), label: 'Grades'),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Assessment'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profiles'),
-        ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(canvasColor: originalNavy),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Colors.white, width: 1)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) => setState(() => _selectedIndex = index),
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: originalNavy,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white.withValues(alpha: 0.5),
+            // Serif font style for the original high-fidelity design
+            selectedLabelStyle: const TextStyle(
+              fontFamily: 'serif', 
+              fontSize: 11, 
+              fontWeight: FontWeight.bold
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontFamily: 'serif', 
+              fontSize: 11
+            ),
+            elevation: 0,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined), 
+                activeIcon: Icon(Icons.home),
+                label: 'Home'
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_month_outlined), 
+                activeIcon: Icon(Icons.calendar_month),
+                label: 'Attendance'
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.spellcheck_rounded), 
+                activeIcon: Icon(Icons.spellcheck_rounded),
+                label: 'Grades'
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.library_books_outlined), 
+                activeIcon: Icon(Icons.library_books),
+                label: 'Assessment'
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_circle_outlined), 
+                activeIcon: Icon(Icons.account_circle),
+                label: 'Profiles'
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

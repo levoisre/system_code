@@ -1,354 +1,269 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/attendance_page/request_form.dart';
-// 1. IMPORT YOUR NOTIFICATIONS PAGE
-import 'package:smart_classroom_facilitator_project/student_ui/notification_page/notification.dart';
+import 'package:intl/intl.dart';
+import 'request_form.dart';
 
-class AttendanceHistory extends StatefulWidget {
-  const AttendanceHistory({super.key});
+class StudentAttendanceHistory extends StatefulWidget {
+  const StudentAttendanceHistory({super.key});
 
   @override
-  State<AttendanceHistory> createState() => _AttendanceHistoryState();
+  State<StudentAttendanceHistory> createState() => _StudentAttendanceHistoryState();
 }
 
-class _AttendanceHistoryState extends State<AttendanceHistory> {
-  static const Color darkNavy = Color(0xFF0C1446);
-  String selectedMonth = "March 2026";
+class _StudentAttendanceHistoryState extends State<StudentAttendanceHistory> with SingleTickerProviderStateMixin {
+  static const Color darkNavy = Color(0xFF000051);
+  static const Color bgColor = Color(0xFFE8E8E8);
+  
+  late TabController _tabController;
+  late Timer _timer;
+  
+  DateTime _viewingDate = DateTime.now(); // The month the student is currently viewing
+  String _liveTime = "";
 
-  // 1. DATA: List of submitted requests
-  final List<Map<String, String>> _submittedRequests = [
-    {"date": "03/09/2026", "reason": "Forgot to Clock In", "status": "Pending"},
-    {"date": "03/02/2026", "reason": "Technical Issue", "status": "Approved"},
+  // 1. DATA SOURCE: All historical logs
+  final List<Map<String, dynamic>> _allAttendanceLogs = [
+    {"date": DateTime(2026, 3, 09), "in": "1:30 PM", "out": "7:00 PM", "hours": "05:30"},
+    {"date": DateTime(2026, 3, 08), "in": "3:30 PM", "out": "9:00 PM", "hours": "06:30"},
+    {"date": DateTime(2026, 2, 14), "in": "08:00 AM", "out": "05:00 PM", "hours": "09:00"},
+    {"date": DateTime(2026, 2, 12), "in": "09:15 AM", "out": "04:30 PM", "hours": "07:15"},
   ];
 
-  // 2. DATA: Monthly Stats
-  final Map<String, Map<String, String>> monthlyStats = {
-    "March 2026": {"early": "2", "absent": "3", "late": "0", "req": "2"},
-    "February 2026": {"early": "1", "absent": "1", "late": "2", "req": "1"},
-    "January 2026": {"early": "0", "absent": "0", "late": "0", "req": "0"},
-  };
+  final List<Map<String, dynamic>> _submittedRequests = [
+    {"date": "03/10/2026", "reason": "Medical", "status": "Approved", "type": "Absence"},
+  ];
 
-  // 3. DATA: Monthly Logs
-  final Map<String, List<Map<String, dynamic>>> monthlyData = {
-    "March 2026": [
-      {
-        "week": "Week 2", "dates": "08 - 14",
-        "logs": [
-          _LogData('09', 'Tues', '1:30 PM', '7:00 PM', '05:30'),
-          _LogData('08', 'Mon', '3:30 PM', '9:00 PM', '06:30')
-        ]
-      },
-    ],
-    "February 2026": [
-      {
-        "week": "Week 4", "dates": "22 - 28",
-        "logs": [
-          _LogData('24', 'Tues', '1:00 PM', '6:00 PM', '05:00'),
-          _LogData('23', 'Mon', '2:00 PM', '8:00 PM', '06:00')
-        ]
-      },
-      {
-        "week": "Week 3", "dates": "15 - 21",
-        "logs": [
-          _LogData('17', 'Tues', '1:45 PM', '6:30 PM', '04:45'),
-        ]
-      },
-    ],
-    "January 2026": [
-      {
-        "week": "Week 1", "dates": "01 - 07",
-        "logs": [
-          _LogData('06', 'Tues', '9:00 AM', '4:00 PM', '07:00'),
-          _LogData('05', 'Mon', '9:15 AM', '4:30 PM', '07:15')
-        ]
-      },
-    ],
-  };
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _updateLiveTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateLiveTime());
+  }
 
-  // Logic to navigate and receive new requests from the form
-  Future<void> _navigateToForm() async {
+  @override
+  void dispose() {
+    _timer.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _updateLiveTime() {
+    if (mounted) {
+      setState(() {
+        _liveTime = DateFormat('hh:mm:ss a').format(DateTime.now());
+      });
+    }
+  }
+
+  // --- LOGIC: SELECT PREVIOUS DATES ---
+  Future<void> _changeViewDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _viewingDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null) {
+      setState(() => _viewingDate = picked);
+    }
+  }
+
+  void _openRequestForm() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const RequestFormPage()),
     );
-
-    // FIX: Guard against async gaps
-    if (!mounted) return;
-
-    if (result != null && result is Map<String, String>) {
+    if (result != null && mounted) {
       setState(() {
-        _submittedRequests.insert(0, result);
+        _submittedRequests.insert(0, result as Map<String, dynamic>);
+        _tabController.animateTo(1); 
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Request added to your history")),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentMonthRecords = monthlyData[selectedMonth] ?? [];
-    final stats = monthlyStats[selectedMonth] ?? {"early": "0", "absent": "0", "late": "0", "req": "0"};
-
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E8E8),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: darkNavy,
         elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text('ATTENDANCE HISTORY', 
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif')),
-        // 2. UPDATED ACTIONS: BELL IS NOW CLICKABLE
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NotificationsPage()),
-              );
-            },
-          ),
-          const SizedBox(width: 10),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(onTap: _showMonthPicker, child: _buildMonthSelector()),
-            const SizedBox(height: 20),
-            _buildStatsGrid(stats),
-            const SizedBox(height: 25),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("RECENT REQUESTS", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54, fontFamily: 'serif')),
-                TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyRequestsPage(requests: _submittedRequests))),
-                  child: const Text("View All", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            _buildRequestListPreview(),
-            const SizedBox(height: 25),
-
-            const Text("WEEKLY LOGS", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54, fontFamily: 'serif')),
-            const SizedBox(height: 10),
-            
-            if (currentMonthRecords.isEmpty)
-              const Center(child: Padding(padding: EdgeInsets.only(top: 20), child: Text("No records found for this month.")))
-            else
-              ...currentMonthRecords.map((weekData) => _buildWeeklyLog(week: weekData['week'], dates: weekData['dates'], logs: weekData['logs'])),
+            const Text("ATTENDANCE HISTORY", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+            Text("Live: $_liveTime", style: const TextStyle(color: Colors.white70, fontSize: 10)),
           ],
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          tabs: const [Tab(text: "LOGS"), Tab(text: "MY REQUESTS")],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildLogsTab(), _buildRequestsTab()],
       ),
     );
   }
 
-  // --- UI HELPERS ---
+  Widget _buildLogsTab() {
+    // FILTER LOGS based on the month and year selected in _viewingDate
+    final filteredLogs = _allAttendanceLogs.where((log) => 
+      log['date'].month == _viewingDate.month && 
+      log['date'].year == _viewingDate.year
+    ).toList();
 
-  Widget _buildRequestListPreview() {
-    if (_submittedRequests.isEmpty) return const Text("No active requests.");
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _submittedRequests.length,
-        itemBuilder: (context, index) {
-          final req = _submittedRequests[index];
-          Color statusCol = req['status'] == 'Pending' ? Colors.orange : Colors.green;
-          return Container(
-            width: 180, margin: const EdgeInsets.only(right: 15), padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.black12)),
-            child: Stack(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(req['date']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(req['reason']!, style: const TextStyle(fontSize: 11, color: Colors.black54), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 5),
-                    Text(req['status']!, style: TextStyle(color: statusCol, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Positioned(top: -10, right: -10, child: IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _submittedRequests.removeAt(index)))),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildWeeklyLog({required String week, required String dates, required List<_LogData> logs}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.black12)),
+    return SingleChildScrollView(
       child: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15),
-            decoration: const BoxDecoration(color: Color(0xFFE3F2FD), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(week, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(dates, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-              ],
-            ),
-          ),
-          ...logs.map((log) => _logRow(log)),
-        ],
-      ),
-    );
-  }
-
-  Widget _logRow(_LogData d) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          SizedBox(
-            width: 45,
-            child: Column(
-              children: [
-                Text(d.dateNum, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), 
-                Text(d.dayName, style: const TextStyle(fontSize: 11, color: Colors.black54))
-              ],
-            ),
-          ),
-          _timeItem(Icons.south_west, d.checkIn, 'In'),
-          _timeItem(Icons.north_east, d.checkOut, 'Out'),
-          _timeItem(Icons.access_time, d.totalHrs, 'Total'),
-          
-          IconButton(
-            icon: const Icon(Icons.edit_note, size: 28, color: Colors.black87),
-            onPressed: _navigateToForm,
-          ),
+          _buildMonthSelector(),
+          _buildStatGrid(filteredLogs.length),
+          const SizedBox(height: 10),
+          if (filteredLogs.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40.0),
+              child: Text("No logs found for this period.", style: TextStyle(color: Colors.grey)),
+            )
+          else
+            _buildWeeklyCard("Records Found", DateFormat('MMMM yyyy').format(_viewingDate), filteredLogs),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
   Widget _buildMonthSelector() {
+    return InkWell(
+      onTap: _changeViewDate, // Opens the date picker to view previous dates
+      child: Container(
+        margin: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black12)),
+        child: Row(
+          children: [
+            const Icon(Icons.history, color: darkNavy, size: 20),
+            const SizedBox(width: 12),
+            Text("Viewing: ${DateFormat('MMMM yyyy').format(_viewingDate)}", 
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy)),
+            const Spacer(),
+            const Text("CHANGE", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- SHARED UI HELPERS ---
+
+  Widget _buildStatGrid(int totalLogs) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.black12)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      margin: const EdgeInsets.symmetric(horizontal: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.3,
         children: [
-          Row(children: [const Icon(Icons.calendar_month, size: 20, color: Colors.black54), const SizedBox(width: 10), Text(selectedMonth, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'serif'))]),
-          const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+          _statTile(totalLogs.toString(), "Present Days", const Color(0xFFF0F7FF)),
+          _statTile("0", "Absents", const Color(0xFFF5EEFF)),
+          _statTile("0", "Late In", const Color(0xFFFFEBF0)),
+          _statTile(_submittedRequests.length.toString(), "Requests", const Color(0xFFFFF8E1)),
         ],
       ),
     );
   }
 
-  void _showMonthPicker() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-      builder: (context) {
-        List<String> months = monthlyStats.keys.toList();
+  Widget _statTile(String count, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54, fontFamily: 'serif')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyCard(String title, String range, List<Map<String, dynamic>> logs) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 12)),
+              const Spacer(),
+              Text(range, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            ],
+          ),
+          const Divider(),
+          ...logs.map((l) => _buildLogItem(l)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogItem(Map<String, dynamic> log) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            children: [
+              Text(DateFormat('dd').format(log['date']), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(DateFormat('E').format(log['date']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            ],
+          ),
+          _timeDetail(Icons.login, log['in']!, "In"),
+          _timeDetail(Icons.logout, log['out']!, "Out"),
+          _timeDetail(Icons.timer_outlined, log['hours']!, "Total"),
+          IconButton(onPressed: _openRequestForm, icon: const Icon(Icons.edit_note, color: Colors.black45)),
+        ],
+      ),
+    );
+  }
+
+  Widget _timeDetail(IconData icon, String time, String label) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: darkNavy),
+        Text(time, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 8, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildRequestsTab() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(15),
+      itemCount: _submittedRequests.length,
+      itemBuilder: (context, index) {
+        final req = _submittedRequests[index];
         return Container(
-          padding: const EdgeInsets.all(20), height: 300,
-          child: ListView.builder(
-            itemCount: months.length,
-            itemBuilder: (context, i) => ListTile(
-              title: Text(months[i], style: const TextStyle(fontFamily: 'serif')),
-              onTap: () { setState(() => selectedMonth = months[i]); Navigator.pop(context); },
-            ),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.black12)),
+          child: Row(
+            children: [
+              const Icon(Icons.history_edu, color: Colors.orange),
+              const SizedBox(width: 15),
+              Expanded(child: Text(req['reason']!, style: const TextStyle(fontWeight: FontWeight.bold))),
+              Text(req['status'], style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10)),
+            ],
           ),
         );
       },
     );
   }
-
-  Widget _buildStatsGrid(Map<String, String> stats) {
-    return GridView.count(
-      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.2,
-      children: [
-        _statCard(const Color(0xFFE3F2FD), stats['early']!, 'Early Leave', Colors.blue),
-        _statCard(const Color(0xFFF3E5F5), stats['absent']!, 'Absents', Colors.purple),
-        _statCard(const Color(0xFFFFEBEE), stats['late']!, 'Late In', Colors.red),
-        _statCard(const Color(0xFFFFFDE7), stats['req']!, 'Requests', Colors.orange),
-      ],
-    );
-  }
-
-  Widget _statCard(Color bg, String val, String label, Color textCol) {
-    return Container(
-      padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(15)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(val, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textCol)),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'serif')),
-      ]),
-    );
-  }
-
-  Widget _timeItem(IconData i, String t, String l) {
-    return Column(
-      children: [
-        Icon(i, size: 18), 
-        Text(t, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)), 
-        Text(l, style: const TextStyle(fontSize: 9, color: Colors.black54))
-      ]
-    );
-  }
-}
-
-// --- VIEW ALL REQUESTS PAGE ---
-class MyRequestsPage extends StatefulWidget {
-  final List<Map<String, String>> requests;
-  const MyRequestsPage({super.key, required this.requests});
-  @override State<MyRequestsPage> createState() => _MyRequestsPageState();
-}
-
-class _MyRequestsPageState extends State<MyRequestsPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8E8E8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0C1446), 
-        iconTheme: const IconThemeData(color: Colors.white), 
-        title: const Text("MY REQUESTS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-      ),
-      body: widget.requests.isEmpty 
-        ? const Center(child: Text("No requests found.")) 
-        : ListView.builder(
-            padding: const EdgeInsets.all(15), 
-            itemCount: widget.requests.length,
-            itemBuilder: (context, index) {
-              final req = widget.requests[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10), 
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), 
-                child: ListTile(
-                  leading: const Icon(Icons.description, color: Color(0xFF0C1446)),
-                  title: Text(req['date']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("${req['reason']} - ${req['status']}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () {
-                      setState(() => widget.requests.removeAt(index));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request deleted")));
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-    );
-  }
-}
-
-class _LogData {
-  final String dateNum, dayName, checkIn, checkOut, totalHrs;
-  _LogData(this.dateNum, this.dayName, this.checkIn, this.checkOut, this.totalHrs);
 }

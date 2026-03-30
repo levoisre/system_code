@@ -1,0 +1,280 @@
+import 'package:flutter/material.dart';
+import '../notification_page/notification.dart'; 
+import '../attendance_page/attendance_shell.dart';
+import '../recitation_page/recitation_facilitator.dart';
+
+class CourseDashboard extends StatefulWidget {
+  final Map<String, dynamic> courseData;
+
+  const CourseDashboard({super.key, required this.courseData});
+
+  @override
+  State<CourseDashboard> createState() => _CourseDashboardState();
+}
+
+class _CourseDashboardState extends State<CourseDashboard> {
+  static const Color darkNavy = Color(0xFF000080);
+  static const Color bgColor = Color(0xFFF8FAFC); 
+  static const Color accentGreen = Color(0xFF43A047);
+  static const Color accentRed = Color(0xFFE53935);
+
+  bool _isActivated = false;
+  final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _filteredStudents = []; // Corrected Name
+  
+  final String _attendancePercentage = "75%";
+  final String _presentCount = "15/20 Present";
+  final double _classAverage = 88.5; 
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredStudents = widget.courseData['students'] ?? [];
+  }
+
+  // FIXED: Changed _filteredLogs to _filteredStudents
+  void _onSearchChanged(String query) {
+    setState(() {
+      _filteredStudents = (widget.courseData['students'] as List<dynamic>)
+          .where((student) => student.toString().toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: Row(
+        children: [
+          _buildSidebar(),
+          Expanded(
+            child: Column(
+              children: [
+                _buildMinimalHeader(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPopStatCard(
+                                "Total Attendance", 
+                                _attendancePercentage, 
+                                _presentCount, 
+                                accentGreen,
+                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InstructorAttendanceHistory())),
+                              )
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: _buildPopStatCard(
+                                "Class Average Score", 
+                                "${_classAverage.toInt()}%", 
+                                "Grade: A-", 
+                                Colors.purple,
+                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RecitationFacilitator())),
+                              )
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: _buildPopRosterCard()),
+                            const SizedBox(width: 24),
+                            Expanded(flex: 2, child: _buildPopActivationCard()),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _buildBottomActions(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinimalHeader() {
+    return Container(
+      width: double.infinity,
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Text("Courses", style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+              ),
+              Text(
+                widget.courseData['title'].toString().toUpperCase(),
+                style: const TextStyle(color: darkNavy, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'serif'),
+              ),
+            ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: darkNavy, size: 24),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 90,
+      color: darkNavy,
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        children: [
+          _navItem(Icons.grid_view_rounded, "Home", true, () {}),
+          _navItem(Icons.calendar_today_rounded, "Attendance", false, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InstructorAttendanceHistory()))),
+          _navItem(Icons.emoji_events_outlined, "Recitation", false, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RecitationFacilitator()))),
+          _navItem(Icons.analytics_outlined, "Grades", false, () {}),
+          _navItem(Icons.assignment_outlined, "Assessment", false, () {}), 
+          const Spacer(),
+          _navItem(Icons.account_circle_outlined, "Profile", false, () {}),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, String label, bool isSelected, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : Colors.white38, size: 24),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(fontSize: 9, color: isSelected ? Colors.white : Colors.white38)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopStatCard(String title, String value, String subtitle, Color color, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(20), 
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 8))],
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Text(subtitle, style: const TextStyle(fontSize: 12, color: darkNavy, fontWeight: FontWeight.w800)),
+              ])),
+              Container(
+                height: 52, width: 52, 
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle), 
+                child: Center(child: Text(value, style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 14)))
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopRosterCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+      child: Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text("CLASS ROSTER", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: darkNavy)),
+          Container(
+            width: 180, height: 40,
+            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+            child: TextField(
+              controller: _searchController, // FIXED: Added controller
+              onChanged: _onSearchChanged, // FIXED: Added search logic
+              decoration: const InputDecoration(hintText: "Search...", prefixIcon: Icon(Icons.search, size: 18), border: InputBorder.none)
+            ),
+          ),
+        ]),
+        const Divider(height: 40),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _filteredStudents.length,
+            separatorBuilder: (ctx, i) => const SizedBox(width: 20),
+            itemBuilder: (ctx, i) => Column(children: [
+              const CircleAvatar(backgroundColor: Color(0xFFF1F5F9), child: Icon(Icons.person, color: darkNavy)),
+              const SizedBox(height: 8),
+              Text(_filteredStudents[i].toString().split(' ')[0], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildPopActivationCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _isActivated ? accentGreen : Colors.transparent, width: 2),
+      ),
+      child: Column(children: [
+        const Text("HOTSPOT STATUS", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: darkNavy)),
+        const SizedBox(height: 20),
+        Icon(Icons.fingerprint_rounded, color: _isActivated ? accentGreen : Colors.grey[300], size: 60),
+        const SizedBox(height: 10),
+        Text(_isActivated ? "SYSTEM LIVE" : "SYSTEM IDLE", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: _isActivated ? accentGreen : Colors.grey)),
+      ]),
+    );
+  }
+
+  Widget _buildBottomActions() {
+    return Row(children: [
+      Expanded(child: _actionBtn("ACTIVATE", Icons.bolt_rounded, _isActivated ? Colors.grey : accentGreen, () => setState(() => _isActivated = true))),
+      const SizedBox(width: 24),
+      Expanded(child: _actionBtn("INACTIVATE", Icons.power_settings_new_rounded, !_isActivated ? Colors.grey : accentRed, () => setState(() => _isActivated = false))),
+    ]);
+  }
+
+  Widget _actionBtn(String label, IconData icon, Color color, VoidCallback tap) {
+    return SizedBox(
+      height: 56, 
+      child: ElevatedButton.icon(
+        onPressed: tap, 
+        icon: Icon(icon, color: Colors.white), 
+        label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
+        style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))
+      )
+    );
+  }
+}

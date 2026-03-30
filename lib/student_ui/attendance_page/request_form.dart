@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // REQUIRED: Run 'flutter pub add intl' in terminal
 
 class RequestFormPage extends StatefulWidget {
   const RequestFormPage({super.key});
@@ -10,53 +9,53 @@ class RequestFormPage extends StatefulWidget {
 
 class _RequestFormPageState extends State<RequestFormPage> {
   static const Color darkNavy = Color(0xFF0C1446);
+  static const Color bgColor = Color(0xFFF8F9FA);
   bool showSuccess = false;
 
-  // Controllers to manage the live typing and data retrieval
   final TextEditingController _studentNumController = TextEditingController(text: "02000654892");
   final TextEditingController _studentNameController = TextEditingController(text: "Kristina Dela Cruz");
   final TextEditingController _dateController = TextEditingController(text: "03/09/2026");
   final TextEditingController _clockInController = TextEditingController(text: "09:30 AM");
   final TextEditingController _clockOutController = TextEditingController(text: "02:00 PM");
-  final TextEditingController _explanationController = TextEditingController(text: "On time in school but forgot to clock in on time.");
+  final TextEditingController _explanationController = TextEditingController(text: "Forgot to clock in on time.");
 
-  String? selectedReason = "Wrong Clock In";
+  String? selectedReason = "Forgot to Clock In";
+  String _fileName = "No file attached";
+  bool _isUploading = false;
+
   final List<String> reasons = [
-    "Wrong Clock In",
-    "Wrong Clock Out",
-    "Forgot to Clock In",
-    "Forgot to Clock Out",
-    "Technical Issue",
-    "Emergency/Health",
-    "Other"
+    "Wrong Clock In", "Wrong Clock Out", "Forgot to Clock In", 
+    "Forgot to Clock Out", "Technical Issue", "Emergency/Health", "Other"
   ];
 
-  // INTERACTIVE DATE PICKER
-  Future<void> _selectDate() async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2026, 3, 9),
-      firstDate: DateTime(2025),
-      lastDate: DateTime(2030),
-    );
-    if (picked != null) {
+  void _pickFile() {
+    setState(() => _isUploading = true);
+    Future.delayed(const Duration(seconds: 1), () {
       setState(() {
-        _dateController.text = DateFormat('MM/dd/yyyy').format(picked);
+        _isUploading = false;
+        _fileName = "medical_cert_01.jpg";
       });
-    }
+    });
   }
 
-  // INTERACTIVE TIME PICKER
+  void _handleFormSubmit() {
+    setState(() => showSuccess = true);
+
+    final newRequest = {
+      "date": _dateController.text,
+      "reason": selectedReason ?? "Other",
+      "status": "Pending",
+      "time": "${_clockInController.text} - ${_clockOutController.text}",
+    };
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) Navigator.pop(context, newRequest); 
+    });
+  }
+
   Future<void> _selectTime(TextEditingController controller) async {
-    TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        controller.text = picked.format(context);
-      });
-    }
+    TimeOfDay? picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (picked != null) setState(() => controller.text = picked.format(context));
   }
 
   @override
@@ -83,11 +82,10 @@ class _RequestFormPageState extends State<RequestFormPage> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const Text('New Attendance Request 1', 
+          const Text('New Attendance Request', 
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkNavy, fontFamily: 'serif')),
           const Divider(thickness: 1, color: Colors.black26, indent: 50, endIndent: 50),
           const SizedBox(height: 20),
-          
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -98,37 +96,26 @@ class _RequestFormPageState extends State<RequestFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildFieldLabel('Student Number:'),
-                _buildEditableField(_studentNumController, null),
-
-                _buildFieldLabel('Student Name:'),
-                _buildEditableField(_studentNameController, null),
-
-                _buildFieldLabel('Date:'),
-                GestureDetector(
-                  onTap: _selectDate,
-                  child: AbsorbPointer(
-                    child: _buildEditableField(_dateController, Icons.calendar_month, hasDropdown: true)
-                  ),
-                ),
-
+                _buildFieldLabel('Student Information:'),
+                _buildField(_studentNumController, icon: Icons.badge_outlined),
+                _buildField(_studentNameController, icon: Icons.person_outline),
+                _buildFieldLabel('Date of Request:'),
+                _buildField(_dateController, icon: Icons.calendar_month),
                 const SizedBox(height: 15),
                 Row(
                   children: [
-                    Expanded(child: _buildTimePickerField('Clock In:', _clockInController)),
+                    Expanded(child: _buildTimePicker('Clock In:', _clockInController)),
                     const SizedBox(width: 15),
-                    Expanded(child: _buildTimePickerField('Clock Out:', _clockOutController)),
+                    Expanded(child: _buildTimePicker('Clock Out:', _clockOutController)),
                   ],
                 ),
-
+                _buildFieldLabel('Reason Category:'),
+                _buildDropdown(),
+                _buildFieldLabel('Detailed Explanation:'),
+                _buildTextArea(),
                 const SizedBox(height: 20),
-                const Divider(),
-
-                _buildFieldLabel('Reason:'),
-                _buildReasonDropdown(),
-
-                _buildFieldLabel('Explanation:'),
-                _buildTextArea(_explanationController),
+                _buildFieldLabel('Attach Evidence:'),
+                _buildUploadBox(),
               ],
             ),
           ),
@@ -137,7 +124,7 @@ class _RequestFormPageState extends State<RequestFormPage> {
             children: [
               Expanded(child: _buildButton('DISCARD', Colors.white, darkNavy, () => Navigator.pop(context))),
               const SizedBox(width: 15),
-              Expanded(child: _buildButton('SUBMIT', darkNavy, Colors.white, () => setState(() => showSuccess = true))),
+              Expanded(child: _buildButton('SUBMIT', darkNavy, Colors.white, _handleFormSubmit)),
             ],
           )
         ],
@@ -145,59 +132,23 @@ class _RequestFormPageState extends State<RequestFormPage> {
     );
   }
 
-  // --- INTERACTIVE WIDGETS ---
-
-  Widget _buildReasonDropdown() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA), 
-        borderRadius: BorderRadius.circular(8), 
-        border: Border.all(color: Colors.black12)
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButtonFormField<String>(
-          // FIXED: Use initialValue to avoid deprecation warnings
-          initialValue: selectedReason,
-          decoration: const InputDecoration(border: InputBorder.none),
-          items: reasons.map((String value) {
-            return DropdownMenuItem<String>(
-              value: value, 
-              child: Text(value, style: const TextStyle(fontSize: 14, fontFamily: 'serif'))
-            );
-          }).toList(),
-          onChanged: (newValue) => setState(() => selectedReason = newValue),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimePickerField(String label, TextEditingController controller) {
+  Widget _buildTimePicker(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontFamily: 'serif')),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         GestureDetector(
           onTap: () => _selectTime(controller),
           child: AbsorbPointer(
             child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA), 
-                borderRadius: BorderRadius.circular(8), 
-                border: Border.all(color: Colors.black12)
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.access_time, size: 16, color: Colors.black54),
-                  const SizedBox(width: 5),
-                  Expanded(child: Text(controller.text, 
-                    style: const TextStyle(fontSize: 11, fontFamily: 'serif'))),
-                  const Icon(Icons.arrow_drop_down, size: 16, color: Colors.black54),
-                ],
-              ),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.black12)),
+              child: Row(children: [
+                const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                const SizedBox(width: 8),
+                Text(controller.text, style: const TextStyle(fontSize: 11)),
+              ]),
             ),
           ),
         ),
@@ -205,22 +156,55 @@ class _RequestFormPageState extends State<RequestFormPage> {
     );
   }
 
-  // --- HELPERS ---
+  Widget _buildUploadBox() {
+    return InkWell(
+      onTap: _pickFile,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          // FIXED: Changed withOpacity to withValues
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.2), style: BorderStyle.solid),
+        ),
+        child: Column(
+          children: [
+            _isUploading 
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : const Icon(Icons.cloud_upload_outlined, color: Colors.blue, size: 30),
+            const SizedBox(height: 12),
+            Text(_fileName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkNavy)),
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget _buildEditableField(TextEditingController controller, IconData? icon, {bool hasDropdown = false}) {
+  Widget _buildDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.black12)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedReason,
+          isExpanded: true,
+          items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
+          onChanged: (v) => setState(() => selectedReason = v),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController controller, {IconData? icon}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA), 
-        borderRadius: BorderRadius.circular(8), 
-        border: Border.all(color: Colors.black12)
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.black12)),
       child: TextField(
         controller: controller,
-        style: const TextStyle(fontSize: 14, fontFamily: 'serif'),
+        style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
-          prefixIcon: icon != null ? Icon(icon, size: 18, color: Colors.black54) : null,
-          suffixIcon: hasDropdown ? const Icon(Icons.arrow_drop_down, color: Colors.black54) : null,
+          prefixIcon: icon != null ? Icon(icon, size: 18, color: darkNavy) : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
         ),
@@ -228,18 +212,14 @@ class _RequestFormPageState extends State<RequestFormPage> {
     );
   }
 
-  Widget _buildTextArea(TextEditingController controller) {
+  Widget _buildTextArea() {
     return Container(
       margin: const EdgeInsets.only(top: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA), 
-        borderRadius: BorderRadius.circular(8), 
-        border: Border.all(color: Colors.black12)
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.black12)),
       child: TextField(
-        controller: controller,
-        maxLines: 4,
-        style: const TextStyle(fontSize: 14, fontFamily: 'serif'),
+        controller: _explanationController,
+        maxLines: 3,
+        style: const TextStyle(fontSize: 13),
         decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.all(12)),
       ),
     );
@@ -247,61 +227,33 @@ class _RequestFormPageState extends State<RequestFormPage> {
 
   Widget _buildFieldLabel(String label) => Padding(
     padding: const EdgeInsets.only(top: 15, bottom: 5), 
-    child: Text(label, style: const TextStyle(fontSize: 14, color: Colors.black87, fontFamily: 'serif'))
+    child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: darkNavy))
   );
 
   Widget _buildButton(String label, Color bg, Color text, VoidCallback action) => ElevatedButton(
-    onPressed: action, 
+    onPressed: action,
     style: ElevatedButton.styleFrom(
-      backgroundColor: bg, 
-      foregroundColor: text, 
-      shape: const StadiumBorder(), 
-      side: BorderSide(color: darkNavy), 
-      minimumSize: const Size(0, 50)
-    ), 
-    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'serif'))
+      backgroundColor: bg, foregroundColor: text, shape: const StadiumBorder(), 
+      side: const BorderSide(color: darkNavy), minimumSize: const Size(0, 50)
+    ),
+    child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
   );
 
   Widget _buildSuccessOverlay() {
     return Container(
-      color: Colors.black.withValues(alpha: 0.4),
-      width: double.infinity,
-      height: double.infinity,
+      color: Colors.black54,
       child: Center(
-        child: InkWell(
-          onTap: () {
-            setState(() => showSuccess = false);
-            
-            // PACKAGE DATA: Create the data object to send back to the history page
-            final newRequest = {
-              "date": _dateController.text,
-              "reason": selectedReason ?? "Other",
-              "status": "Pending",
-            };
-
-            // POP AND SEND RESULT
-            Navigator.pop(context, newRequest); 
-          },
-          child: Container(
-            width: 320,
-            padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDDE4F3).withValues(alpha: 0.95), 
-              borderRadius: BorderRadius.circular(25), 
-              border: Border.all(color: Colors.black, width: 2)
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('REQUEST\nSUBMITTED!', 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, height: 1.1, fontFamily: 'serif', color: Colors.black)),
-                SizedBox(height: 30),
-                Text('Please wait for your Advisor\nto accept the request, thank\nyou!', 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(fontSize: 18, color: Colors.black87, fontFamily: 'serif')),
-              ],
-            ),
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.all(40),
+          decoration: BoxDecoration(color: const Color(0xFFDDE4F3), borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.black, width: 2)),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.green, size: 60),
+              SizedBox(height: 20),
+              Text('REQUEST\nSUBMITTED!', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
+            ],
           ),
         ),
       ),

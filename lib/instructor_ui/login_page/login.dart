@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../course_page/course_list.dart'; 
 
 class InstructorLoginPage extends StatefulWidget {
   const InstructorLoginPage({super.key});
@@ -8,165 +9,172 @@ class InstructorLoginPage extends StatefulWidget {
 }
 
 class _InstructorLoginPageState extends State<InstructorLoginPage> {
-  // 1. Text Controllers to capture input
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Color matching from wireframe
-  static const Color darkNavy = Color(0xFF0C1446);
-  static const Color lightGreyBg = Color(0xFFE0E0E0); // Outer background
-
-  void _handleLogin() {
-    String email = _emailController.text.trim();
-    String password = _passwordController.text.trim();
-
-    if (email == "instructor@sti.edu" && password == "password123") {
-      // Navigate to Instructor Dashboard (will create next)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Successful!")),
-      );
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const InstructorDashboard()));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid Credentials. Use standard STI login.")),
-      );
-    }
-  }
+  static const Color darkNavy = Color(0xFF0C1446); 
 
   @override
   Widget build(BuildContext context) {
-    // The main screen has the outer light grey background
     return Scaffold(
-      backgroundColor: lightGreyBg,
-      body: Center(
-        // Constraining the width makes it look like the Wireframe on Web/Emulators
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          // Inner content container (white/light grey in image)
-          margin: const EdgeInsets.all(40),
-          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 60),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F0F0), // Inner card color
-            borderRadius: BorderRadius.circular(5), // Slight rounded edge
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              )
-            ],
+      backgroundColor: const Color(0xFFF1F1F1),
+      appBar: AppBar(
+        backgroundColor: darkNavy,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'SMART CLASSROOM FACILITATOR',
+          style: TextStyle(
+            color: Colors.white, 
+            fontSize: 16, 
+            fontWeight: FontWeight.bold,
+            fontFamily: 'serif'
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Shrinks to fit content
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // --- 2. THE TITLE (SERIF FONT) ---
-              const Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  // Using default serif to match wireframe style
-                  fontFamily: 'serif', 
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 50),
+            
+            // LARGE IDENTITY ICON
+            const Center(
+              child: Icon(Icons.account_circle, size: 160, color: Colors.black12),
+            ),
+            
+            const SizedBox(height: 40),
+
+            // INSTRUCTOR LOGIN CARD
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 45),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0x1A000000)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0D000000),
+                      blurRadius: 15,
+                      offset: Offset(0, 5),
+                    )
+                  ],
                 ),
-              ),
-              const SizedBox(height: 15),
-
-              // --- 3. SUBTITLE ---
-              const Text(
-                'Enter your details to access your class',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // --- 4. E-MAIL INPUT FIELD ---
-              _buildInputField(
-                controller: _emailController,
-                hintText: 'E-mail Address',
-                icon: Icons.email_outlined,
-              ),
-              const SizedBox(height: 20),
-
-              // --- 5. PASSWORD INPUT FIELD ---
-              _buildInputField(
-                controller: _passwordController,
-                hintText: 'Password',
-                icon: Icons.lock_outline,
-                isPassword: true,
-              ),
-              const SizedBox(height: 50),
-
-              // --- 6. THE LOGIN BUTTON ---
-              SizedBox(
-                width: double.infinity, // Fills available width in Column
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkNavy,
-                    // Fully rounded edges as shown in image
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    elevation: 3,
-                  ),
-                  child: const Text(
-                    'LOGIN',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      letterSpacing: 1.2, // Gives it that modern professional look
+                child: Column(
+                  children: [
+                    const Text(
+                      "INSTRUCTOR LOGIN",
+                      style: TextStyle(
+                        fontSize: 22, 
+                        fontWeight: FontWeight.bold, 
+                        color: darkNavy,
+                        fontFamily: 'serif',
+                        letterSpacing: 1.1
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 45),
+
+                    // INPUT FIELDS
+                    _buildLoginInput(
+                      controller: _emailController,
+                      hint: 'School Email Address',
+                      icon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildLoginInput(
+                      controller: _passwordController,
+                      hint: 'Access Password',
+                      icon: Icons.lock_open_outlined,
+                      isPassword: true,
+                    ),
+                    
+                    const SizedBox(height: 50),
+
+                    // LOGIN BUTTON
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final navigator = Navigator.of(context);
+                          await Future.delayed(const Duration(milliseconds: 200));
+                          if (!mounted) return;
+
+                          navigator.pushReplacement(
+                            MaterialPageRoute(builder: (context) => const InstructorCourseList()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: darkNavy,
+                          foregroundColor: Colors.white,
+                          shape: const StadiumBorder(),
+                          elevation: 3,
+                        ),
+                        child: const Text(
+                          'LOGIN',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            letterSpacing: 1.5, 
+                            fontSize: 16, 
+                            fontFamily: 'serif'
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20), // Bottom padding
-            ],
-          ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Switch to Student Portal Action
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 60),
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context), 
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0x1F000000)),
+                  shape: const StadiumBorder(),
+                ),
+                child: const Text(
+                  "Switch to Student Portal", 
+                  style: TextStyle(color: Colors.black45, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
   }
 
-  // --- REUSABLE INPUT FIELD WIDGET (Matching the image style) ---
-  Widget _buildInputField({
+  Widget _buildLoginInput({
     required TextEditingController controller,
-    required String hintText,
+    required String hint,
     required IconData icon,
     bool isPassword = false,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        // Match the rounded rectangles from the wireframe
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black38), // Subtle dark border
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x1A000000)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 15),
       child: TextField(
         controller: controller,
-        obscureText: isPassword, // Hides text for password
-        style: const TextStyle(fontSize: 16),
+        obscureText: isPassword,
+        style: const TextStyle(fontFamily: 'serif'),
         decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.black45, fontSize: 16),
-          prefixIcon: Icon(icon, color: Colors.black87, size: 22),
-          border: InputBorder.none, // Hide default TextField border
+          hintText: hint,
+          prefixIcon: Icon(icon, color: darkNavy),
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }

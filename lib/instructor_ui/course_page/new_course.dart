@@ -1,267 +1,235 @@
 import 'package:flutter/material.dart';
 
-class CreateCoursePage extends StatefulWidget {
-  const CreateCoursePage({super.key});
+class NewCoursePage extends StatefulWidget {
+  const NewCoursePage({super.key});
 
   @override
-  State<CreateCoursePage> createState() => _CreateCoursePageState();
+  State<NewCoursePage> createState() => _NewCoursePageState();
 }
 
-class _CreateCoursePageState extends State<CreateCoursePage> {
-  // 1. STATE VARIABLES FOR THE DROPDOWNS & INPUTS
-  final TextEditingController _subjectNameController = TextEditingController();
-  final TextEditingController _subjectCodeController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+class _NewCoursePageState extends State<NewCoursePage> {
+  static const Color darkBlue = Color(0xFF000080); 
+  static const Color bgColor = Color(0xFFF4F7FA);
+  static const Color borderSideColor = Color(0xFFEEEEEE);
 
-  String selectedClassList = "Select Class List";
-  List<String> classListOptions = [
-    "Select Class List",
-    "BSIT - 301 (A)",
-    "BSIT - 302 (A)",
-    "BSCPE - 401"
-  ];
+  // Controllers for all form fields
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _locController = TextEditingController();
+  final TextEditingController _descController = TextEditingController(); // This was the unused field
 
-  static const Color darkNavy = Color(0xFF0C1446);
-  static const Color wireframeBg = Color(0xFFF0F0F0); // Light grey outer card
+  // Schedule State
+  TimeOfDay _startTime = const TimeOfDay(hour: 7, minute: 30);
+  TimeOfDay _endTime = const TimeOfDay(hour: 9, minute: 30);
+  final List<String> _daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  final List<String> _selectedDays = [];
 
-  void _handleCreateCourse() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Course created! Use this for real thesis logic.")),
+  // Helper to pick time
+  Future<void> _selectTime(BuildContext context, bool isStart) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _startTime : _endTime,
     );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _startTime = picked;
+        } else {
+          _endTime = picked;
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // The screen has the light grey inner background shown in image
     return Scaffold(
-      backgroundColor: wireframeBg,
-      body: SafeArea(
-        child: Center(
-          // Inner card container matching the image structure
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 800), // Limits width on web/large screens
-            margin: const EdgeInsets.all(30),
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8), // Slightly different shade to differentiate from wireframeBg
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: Colors.black, width: 2), // The outer black wireframe border
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- 2. HEADER: BACK ARROW & TITLE (SERIF FONT) ---
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
-                        onPressed: () => Navigator.pop(context),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: darkBlue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'CREATE NEW COURSE',
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif'),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        child: Container(
+          padding: const EdgeInsets.all(25),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: const [
+              BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 10)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildModernField("Course Name", _nameController, Icons.subtitles_outlined),
+              const SizedBox(height: 15),
+              _buildModernField("Course Code", _codeController, Icons.qr_code_2_outlined),
+              
+              const SizedBox(height: 30),
+              const Text("Class Days", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _daysOfWeek.map((day) {
+                  final bool isSelected = _selectedDays.contains(day);
+                  return GestureDetector(
+                    onTap: () => setState(() => isSelected ? _selectedDays.remove(day) : _selectedDays.add(day)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? darkBlue : const Color(0xFFFAFAFA),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isSelected ? darkBlue : borderSideColor),
                       ),
-                      const Spacer(),
-                      const Text(
-                        'NEW COURSE',
+                      child: Text(
+                        day,
                         style: TextStyle(
-                          fontSize: 32,
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontFamily: 'serif', // Match the serif font style from image
-                        ),
-                      ),
-                      const Spacer(),
-                      // Invisible block to center the title relative to the back arrow
-                      const SizedBox(width: 48), 
-                    ],
-                  ),
-                  const Divider(color: Colors.black, thickness: 2),
-                  const SizedBox(height: 35),
-
-                  // --- 3. FIRST ROW: Subject Name & Subject Code ---
-                  Row(
-                    children: [
-                      _buildFormLabel("Subject Name:"),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildInputBox(controller: _subjectNameController)),
-                      const SizedBox(width: 25),
-                      _buildFormLabel("Subject Code:"),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildInputBox(controller: _subjectCodeController)),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-
-                  // --- 4. SECOND ROW: Class Schedule & Location ---
-                  Row(
-                    children: [
-                      _buildFormLabel("Class Schedule:"),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // Fake drop-down representation for schedule
-                            Expanded(child: _buildStaticInputBox("Time", isDropDown: true)),
-                            const SizedBox(width: 10),
-                            Expanded(child: _buildStaticInputBox("Day", isDropDown: true)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 25),
-                      _buildFormLabel("Location:"),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildInputBox(controller: _locationController)),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-
-                  // --- 5. THIRD ROW: Upload Class List ---
-                  Row(
-                    children: [
-                      _buildFormLabel("Upload Class List:"),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildInteractiveDropDown()),
-                    ],
-                  ),
-                  const SizedBox(height: 35),
-
-                  // --- 6. FOURTH ROW: Descriptions ---
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: _buildFormLabel("Descriptions:"),
-                      ),
-                      const SizedBox(width: 15),
-                      // Larger multi-line input box
-                      Expanded(child: _buildInputBox(controller: _descriptionController, maxLines: 5)),
-                    ],
-                  ),
-                  const SizedBox(height: 50),
-
-                  // --- 7. THE CREATE BUTTON ---
-                  Center(
-                    child: SizedBox(
-                      width: 260, // Pill shaped but wide as in image
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _handleCreateCourse,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: darkNavy,
-                          // Rounded edges as shown in image
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                          elevation: 3,
-                        ),
-                        child: const Text(
-                          'CREATE',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            letterSpacing: 1.2,
-                          ),
                         ),
                       ),
                     ),
-                  ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 25),
+              
+              Row(
+                children: [
+                  Expanded(child: _buildTimePicker("Start Time", _startTime, true)),
+                  const SizedBox(width: 15),
+                  Expanded(child: _buildTimePicker("End Time", _endTime, false)),
                 ],
               ),
-            ),
+
+              const SizedBox(height: 20),
+              _buildModernField("Room / Laboratory", _locController, Icons.location_on_outlined),
+              
+              const SizedBox(height: 20),
+              // FIX: Passed _descController here to resolve the "unused_field" warning
+              _buildModernField("Description", _descController, Icons.description_outlined, isMultiline: true),
+
+              const SizedBox(height: 40),
+              
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_nameController.text.isEmpty || _selectedDays.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Please provide a name and select at least one day.")),
+                      );
+                      return;
+                    }
+                    
+                    // Return the full data back to Course List
+                    final newCourse = {
+                      "title": _nameController.text,
+                      "sched": "${_selectedDays.join('')} ${_startTime.format(context)} - ${_endTime.format(context)}",
+                      "code": _codeController.text,
+                      "desc": _descController.text, // Now successfully capturing description
+                      "color": const Color(0xFFB3E5FC), 
+                    };
+                    
+                    Navigator.pop(context, newCourse);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: darkBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    elevation: 4,
+                  ),
+                  child: const Text(
+                    'ACTIVATE COURSE',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'serif', letterSpacing: 1.2),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // --- REUSABLE UI HELPERS ---
-
-  Widget _buildFormLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildInputBox({required TextEditingController controller, int maxLines = 1}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: Colors.black26),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: const TextStyle(fontSize: 14),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+  // --- UI HELPER: TIME PICKER ---
+  Widget _buildTimePicker(String label, TimeOfDay time, bool isStart) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () => _selectTime(context, isStart),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderSideColor),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(time.format(context), style: const TextStyle(fontSize: 13)),
+                const Icon(Icons.access_time, color: darkBlue, size: 18),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  // Static Box just to show the drop-down appearance from image
-  Widget _buildStaticInputBox(String text, {bool isDropDown = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: Colors.black26),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(text, style: const TextStyle(fontSize: 14, color: Colors.black54)),
-          if (isDropDown) const Icon(Icons.keyboard_arrow_down, color: Colors.black, size: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInteractiveDropDown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: Colors.black26),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedClassList,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black, size: 20),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-          onChanged: (String? newValue) {
-            setState(() {
-              selectedClassList = newValue!;
-            });
-          },
-          items: classListOptions.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value, style: TextStyle(color: value == "Select Class List" ? Colors.black54 : Colors.black87)),
-            );
-          }).toList(),
+  // --- UI HELPER: TEXT FIELD ---
+  Widget _buildModernField(String label, TextEditingController controller, IconData icon, {bool isMultiline = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: isMultiline ? 3 : 1,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: const Color(0x33000080), size: 20),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: borderSideColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: darkBlue),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   @override
   void dispose() {
-    _subjectNameController.dispose();
-    _subjectCodeController.dispose();
-    _locationController.dispose();
-    _descriptionController.dispose();
+    // Standard practice: clean up controllers when the page is closed
+    _nameController.dispose();
+    _codeController.dispose();
+    _locController.dispose();
+    _descController.dispose();
     super.dispose();
   }
 }
