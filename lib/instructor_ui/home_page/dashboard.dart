@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 import '../notification_page/notification.dart'; 
 import '../attendance_page/attendance_shell.dart';
-import '../recitation_page/recitation_facilitator.dart';
+import '../recitation_page/recitation_facilitator.dart'; 
+import '../sidebar.dart'; // Ensure this points to your common sidebar file
 
-class CourseDashboard extends StatefulWidget {
+class InstructorDashboard extends StatefulWidget {
+  final String subjectCode;
+  final String subjectName;
   final Map<String, dynamic> courseData;
 
-  const CourseDashboard({super.key, required this.courseData});
+  const InstructorDashboard({
+    super.key, 
+    required this.subjectCode, 
+    required this.subjectName,
+    required this.courseData,
+  });
 
   @override
-  State<CourseDashboard> createState() => _CourseDashboardState();
+  State<InstructorDashboard> createState() => _InstructorDashboardState();
 }
 
-class _CourseDashboardState extends State<CourseDashboard> {
+class _InstructorDashboardState extends State<InstructorDashboard> {
   static const Color darkNavy = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF8FAFC); 
   static const Color accentGreen = Color(0xFF43A047);
@@ -20,7 +28,7 @@ class _CourseDashboardState extends State<CourseDashboard> {
 
   bool _isActivated = false;
   final TextEditingController _searchController = TextEditingController();
-  List<dynamic> _filteredStudents = []; // Corrected Name
+  List<dynamic> _filteredStudents = []; 
   
   final String _attendancePercentage = "75%";
   final String _presentCount = "15/20 Present";
@@ -32,7 +40,6 @@ class _CourseDashboardState extends State<CourseDashboard> {
     _filteredStudents = widget.courseData['students'] ?? [];
   }
 
-  // FIXED: Changed _filteredLogs to _filteredStudents
   void _onSearchChanged(String query) {
     setState(() {
       _filteredStudents = (widget.courseData['students'] as List<dynamic>)
@@ -47,7 +54,15 @@ class _CourseDashboardState extends State<CourseDashboard> {
       backgroundColor: bgColor,
       body: Row(
         children: [
-          _buildSidebar(),
+          // --- INTEGRATED GLOBAL SIDEBAR ---
+          InstructorSidebar(
+            currentPage: "Dashboard",
+            onPageChanged: (index) {
+              // Since this is the main dashboard, index changes are 
+              // usually handled by the parent InstructorIndex.
+            },
+          ),
+          
           Expanded(
             child: Column(
               children: [
@@ -65,7 +80,10 @@ class _CourseDashboardState extends State<CourseDashboard> {
                                 _attendancePercentage, 
                                 _presentCount, 
                                 accentGreen,
-                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InstructorAttendanceHistory())),
+                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => InstructorAttendanceHistory(
+                                  subjectCode: widget.subjectCode,
+                                  subjectName: widget.subjectName,
+                                ))),
                               )
                             ),
                             const SizedBox(width: 24),
@@ -75,7 +93,10 @@ class _CourseDashboardState extends State<CourseDashboard> {
                                 "${_classAverage.toInt()}%", 
                                 "Grade: A-", 
                                 Colors.purple,
-                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RecitationFacilitator())),
+                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => RecitationFacilitatorPage(
+                                  subjectCode: widget.subjectCode,
+                                  subjectName: widget.subjectName,
+                                ))),
                               )
                             ),
                           ],
@@ -123,7 +144,7 @@ class _CourseDashboardState extends State<CourseDashboard> {
                 child: Icon(Icons.chevron_right, size: 18, color: Colors.grey),
               ),
               Text(
-                widget.courseData['title'].toString().toUpperCase(),
+                widget.subjectName.toUpperCase(),
                 style: const TextStyle(color: darkNavy, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'serif'),
               ),
             ],
@@ -133,41 +154,6 @@ class _CourseDashboardState extends State<CourseDashboard> {
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Container(
-      width: 90,
-      color: darkNavy,
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        children: [
-          _navItem(Icons.grid_view_rounded, "Home", true, () {}),
-          _navItem(Icons.calendar_today_rounded, "Attendance", false, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InstructorAttendanceHistory()))),
-          _navItem(Icons.emoji_events_outlined, "Recitation", false, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RecitationFacilitator()))),
-          _navItem(Icons.analytics_outlined, "Grades", false, () {}),
-          _navItem(Icons.assignment_outlined, "Assessment", false, () {}), 
-          const Spacer(),
-          _navItem(Icons.account_circle_outlined, "Profile", false, () {}),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool isSelected, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? Colors.white : Colors.white38, size: 24),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(fontSize: 9, color: isSelected ? Colors.white : Colors.white38)),
-          ],
-        ),
       ),
     );
   }
@@ -216,8 +202,8 @@ class _CourseDashboardState extends State<CourseDashboard> {
             width: 180, height: 40,
             decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
             child: TextField(
-              controller: _searchController, // FIXED: Added controller
-              onChanged: _onSearchChanged, // FIXED: Added search logic
+              controller: _searchController, 
+              onChanged: _onSearchChanged, 
               decoration: const InputDecoration(hintText: "Search...", prefixIcon: Icon(Icons.search, size: 18), border: InputBorder.none)
             ),
           ),
@@ -251,7 +237,7 @@ class _CourseDashboardState extends State<CourseDashboard> {
       child: Column(children: [
         const Text("HOTSPOT STATUS", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: darkNavy)),
         const SizedBox(height: 20),
-        Icon(Icons.fingerprint_rounded, color: _isActivated ? accentGreen : Colors.grey[300], size: 60),
+        Icon(Icons.wifi_tethering_rounded, color: _isActivated ? accentGreen : Colors.grey[300], size: 60),
         const SizedBox(height: 10),
         Text(_isActivated ? "SYSTEM LIVE" : "SYSTEM IDLE", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: _isActivated ? accentGreen : Colors.grey)),
       ]),

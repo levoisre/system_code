@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_result.dart';
+// Standardize this import to your project structure
+import '../assessment_result.dart';
 
 class MultipleChoiceQuizScreen extends StatefulWidget {
   final String quizTitle;
@@ -16,22 +17,44 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
 
   // --- STATE ---
   int _secondsLeft = 30;
+  final int _totalTime = 30;
   double _progressValue = 1.0;
   Timer? _timer;
   String? _selectedOption;
+  bool _isNavigating = false;
+  
+  // Simulated Live Data (Heights for the bars)
+  double barA = 0;
+  double barB = 0;
+  double barC = 0;
+  double barD = 0;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
+    
+    // Trigger the "Live" bar animation after a short delay to simulate data fetching
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          barA = 40;
+          barB = 100;
+          barC = 60;
+          barD = 25;
+        });
+      }
+    });
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       if (_secondsLeft > 0) {
         setState(() {
           _secondsLeft--;
-          _progressValue = _secondsLeft / 30;
+          _progressValue = _secondsLeft / _totalTime;
         });
       } else {
         _timer?.cancel();
@@ -41,7 +64,10 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   }
 
   void _navigateToResults() {
+    if (_isNavigating) return;
     if (mounted) {
+      _isNavigating = true;
+      _timer?.cancel();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -72,16 +98,11 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. HEADER
             _buildHeader(),
-            
-            // 2. TIMER
             _buildTimerSection(),
-
-            // 3. QUESTION CARD
             _buildQuestionCard(),
-
-            // 4. OPTIONS GRID
+            
+            // OPTIONS GRID
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
@@ -105,10 +126,9 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
               ),
             ),
 
-            // 5. LIVE RESPONSES CHART
+            // LIVE RESPONSES SECTION
             _buildLiveResponses(),
-            
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -125,9 +145,9 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
           Text(widget.quizTitle, 
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif')),
           const SizedBox(height: 10),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: const [
+            children: [
               _Stat(Icons.star_border, "40 points"),
               _Stat(Icons.assignment_outlined, "20 questions"),
               _Stat(Icons.access_time, "30 seconds"),
@@ -185,8 +205,9 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
     bool isSelected = _selectedOption == label;
     return GestureDetector(
       onTap: () {
+        if (_isNavigating) return;
         setState(() => _selectedOption = label);
-        // Navigate after a short selection delay
+        // Short delay to let the student see their selection before transitioning
         Future.delayed(const Duration(milliseconds: 600), _navigateToResults);
       },
       child: Container(
@@ -219,22 +240,22 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.analytics_outlined, size: 20),
+          const Row(
+            children: [
+              Icon(Icons.analytics_outlined, size: 20, color: darkNavy),
               SizedBox(width: 10),
-              Text("Live Responses", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("Live Responses", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _bar("A", 30, const Color(0xFF000080)),
-              _bar("B", 80, const Color(0xFF2ECC71)),
-              _bar("C", 40, const Color(0xFFE67E22)),
-              _bar("D", 15, const Color(0xFFC0392B)),
+              _bar("A", barA, const Color(0xFF000080)),
+              _bar("B", barB, const Color(0xFF2ECC71)),
+              _bar("C", barC, const Color(0xFFE67E22)),
+              _bar("D", barD, const Color(0xFFC0392B)),
             ],
           ),
         ],
@@ -245,13 +266,26 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   Widget _bar(String label, double height, Color color) {
     return Column(
       children: [
-        Container(
+        AnimatedContainer(
+          duration: const Duration(seconds: 1),
+          curve: Curves.easeOutQuart,
           width: 35,
           height: height,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
+          decoration: BoxDecoration(
+            // FIXED: Using withValues(alpha:) to resolve deprecation warnings
+            color: color.withValues(alpha: 0.9), 
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.3), 
+                blurRadius: 4, 
+                offset: const Offset(0, 2)
+              )
+            ]
+          ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
       ],
     );
   }
@@ -262,5 +296,13 @@ class _Stat extends StatelessWidget {
   final String text;
   const _Stat(this.icon, this.text);
   @override
-  Widget build(BuildContext context) => Row(children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(text, style: const TextStyle(fontSize: 11))]);
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.black45), 
+        const SizedBox(width: 4), 
+        Text(text, style: const TextStyle(fontSize: 11, color: Colors.black45))
+      ]
+    );
+  }
 }

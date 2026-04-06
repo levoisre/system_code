@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart'; // Add this import
 
 class NewCoursePage extends StatefulWidget {
   const NewCoursePage({super.key});
@@ -8,15 +9,17 @@ class NewCoursePage extends StatefulWidget {
 }
 
 class _NewCoursePageState extends State<NewCoursePage> {
-  static const Color darkBlue = Color(0xFF000080); 
+  static const Color darkBlue = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF4F7FA);
   static const Color borderSideColor = Color(0xFFEEEEEE);
 
-  // Controllers for all form fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _locController = TextEditingController();
-  final TextEditingController _descController = TextEditingController(); // This was the unused field
+  final TextEditingController _descController = TextEditingController();
+
+  // File Upload State
+  String? _fileName;
 
   // Schedule State
   TimeOfDay _startTime = const TimeOfDay(hour: 7, minute: 30);
@@ -24,7 +27,20 @@ class _NewCoursePageState extends State<NewCoursePage> {
   final List<String> _daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   final List<String> _selectedDays = [];
 
-  // Helper to pick time
+  // Helper to pick file
+  Future<void> _pickStudentList() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'xlsx', 'xls'],
+    );
+
+    if (result != null) {
+      setState(() {
+        _fileName = result.files.single.name;
+      });
+    }
+  }
+
   Future<void> _selectTime(BuildContext context, bool isStart) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -120,8 +136,43 @@ class _NewCoursePageState extends State<NewCoursePage> {
               _buildModernField("Room / Laboratory", _locController, Icons.location_on_outlined),
               
               const SizedBox(height: 20),
-              // FIX: Passed _descController here to resolve the "unused_field" warning
               _buildModernField("Description", _descController, Icons.description_outlined, isMultiline: true),
+
+              const SizedBox(height: 25),
+              
+              // --- STUDENT LIST UPLOAD SECTION ---
+              const Text("Student List", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: _pickStudentList,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAFAFA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderSideColor, style: BorderStyle.solid),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.upload_file, color: darkBlue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _fileName ?? "Upload Student List (CSV/Excel)",
+                          style: TextStyle(
+                            color: _fileName == null ? Colors.black38 : Colors.black87,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_fileName != null)
+                        const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    ],
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 40),
               
@@ -137,12 +188,12 @@ class _NewCoursePageState extends State<NewCoursePage> {
                       return;
                     }
                     
-                    // Return the full data back to Course List
                     final newCourse = {
                       "title": _nameController.text,
                       "sched": "${_selectedDays.join('')} ${_startTime.format(context)} - ${_endTime.format(context)}",
                       "code": _codeController.text,
-                      "desc": _descController.text, // Now successfully capturing description
+                      "desc": _descController.text,
+                      "studentList": _fileName, // Passing the file name back
                       "color": const Color(0xFFB3E5FC), 
                     };
                     
@@ -166,7 +217,7 @@ class _NewCoursePageState extends State<NewCoursePage> {
     );
   }
 
-  // --- UI HELPER: TIME PICKER ---
+  // --- UI HELPERS ---
   Widget _buildTimePicker(String label, TimeOfDay time, bool isStart) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +246,6 @@ class _NewCoursePageState extends State<NewCoursePage> {
     );
   }
 
-  // --- UI HELPER: TEXT FIELD ---
   Widget _buildModernField(String label, TextEditingController controller, IconData icon, {bool isMultiline = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +275,6 @@ class _NewCoursePageState extends State<NewCoursePage> {
 
   @override
   void dispose() {
-    // Standard practice: clean up controllers when the page is closed
     _nameController.dispose();
     _codeController.dispose();
     _locController.dispose();

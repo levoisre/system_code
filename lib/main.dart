@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 // --- 1. PORTAL IMPORTS ---
-// Points to your Student Login Page
 import 'student_ui/login_page/login.dart' as student;
-// Points to your Instructor Login Page
 import 'instructor_ui/login_page/login.dart' as instructor;
 
 void main() {
@@ -71,21 +69,23 @@ class RoleSelectionPage extends StatelessWidget {
               ),
               const SizedBox(height: 50),
 
-              // --- BUTTON TO STUDENT LOGIN ---
+              // --- BUTTON TO STUDENT PORTAL ---
               _buildRoleButton(
                 context,
                 label: "STUDENT PORTAL",
                 icon: Icons.school_outlined,
+                // Ensure student.LoginPage is defined in your student login file
                 destination: const student.LoginPage(), 
               ),
 
               const SizedBox(height: 20),
 
-              // --- BUTTON TO INSTRUCTOR LOGIN ---
+              // --- BUTTON TO INSTRUCTOR PORTAL ---
               _buildRoleButton(
                 context,
                 label: "INSTRUCTOR PORTAL",
                 icon: Icons.admin_panel_settings_outlined,
+                // Points to the updated InstructorLoginPage
                 destination: const instructor.InstructorLoginPage(), 
               ),
               

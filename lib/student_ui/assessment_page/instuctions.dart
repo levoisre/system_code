@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-// Ensure these imports match your actual file paths
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/crossword_assessment.dart';
+// REMOVED: The two broken imports that were causing the "File not found" errors
 import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/multiple_choice_assessment.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/identification_assessment.dart';
 import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/true_or_false_assessment.dart';
 
 class QuizInstructionScreen extends StatelessWidget {
@@ -87,20 +85,14 @@ class QuizInstructionScreen extends StatelessWidget {
     );
   }
 
-  // --- THE FINAL FIX: PASSING THE REQUIRED quizTitle ---
+  // --- FIXED: Removed the logic for Crossword and Identification ---
   void _handleStart(BuildContext context) {
     Widget page;
 
-    if (quizTitle.toLowerCase().contains("crossword")) {
-      page = const CrosswordAssessment();
-    } else if (quizTitle.toLowerCase().contains("identification")) {
-      // PASSING REQUIRED PARAMETER
-      page = IdentificationQuizScreen(quizTitle: quizTitle); 
-    } else if (quizTitle.toLowerCase().contains("quiz")) {
-      // PASSING REQUIRED PARAMETER
+    // We now only check for Multiple Choice (Quiz) or default to True/False
+    if (quizTitle.toLowerCase().contains("quiz")) {
       page = MultipleChoiceQuizScreen(quizTitle: quizTitle);
     } else {
-      // PASSING REQUIRED PARAMETER
       page = TrueFalseQuizScreen(quizTitle: quizTitle);
     }
 

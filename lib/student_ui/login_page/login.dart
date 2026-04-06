@@ -12,13 +12,22 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  // 1. STATE VARIABLE FOR PASSWORD VISIBILITY
+  bool _obscurePassword = true;
+
   static const Color darkNavy = Color(0xFF0C1446); 
+
+  @override
+  void dispose() {
+    _studentIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F1F1),
-      // 1. BRANDED APP BAR (Identical to Instructor)
       appBar: AppBar(
         backgroundColor: darkNavy,
         elevation: 0,
@@ -39,14 +48,12 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             const SizedBox(height: 50),
             
-            // 2. LARGE IDENTITY ICON (Consistent placeholder)
             const Center(
               child: Icon(Icons.account_circle, size: 160, color: Colors.black12),
             ),
             
             const SizedBox(height: 40),
 
-            // 3. STUDENT LOGIN CARD (Matches Instructor Card Design)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Container(
@@ -77,7 +84,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 45),
 
-                    // 4. MATCHING INPUT FIELDS
                     _buildLoginInput(
                       controller: _studentIdController,
                       hint: 'Student ID Number',
@@ -85,29 +91,37 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 20),
 
+                    // 2. UPDATED PASSWORD INPUT WITH EYE ICON
                     _buildLoginInput(
                       controller: _passwordController,
                       hint: 'Access Password',
                       icon: Icons.lock_outline,
                       isPassword: true,
+                      obscureText: _obscurePassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.black38,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                     
                     const SizedBox(height: 50),
 
-                    // 5. STYLISH LOGIN BUTTON
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
                         onPressed: () async {
                           final navigator = Navigator.of(context);
-                          
-                          // Subtle delay for transition
                           await Future.delayed(const Duration(milliseconds: 200));
-                          
                           if (!mounted) return;
 
-                          // NAVIGATE to Student Dashboard
                           navigator.pushReplacement(
                             MaterialPageRoute(builder: (context) => const StudentIndex()),
                           );
@@ -135,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 40),
             
-            // Switcher Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
               child: OutlinedButton(
@@ -157,12 +170,14 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- UI HELPER METHOD (Matches Instructor helper) ---
+  // --- 3. UPDATED UI HELPER METHOD ---
   Widget _buildLoginInput({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    bool obscureText = false, // Added to control visibility
+    Widget? suffixIcon,       // Added to accommodate the eye button
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -172,13 +187,14 @@ class _LoginPageState extends State<LoginPage> {
       ),
       child: TextField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPassword ? obscureText : false,
         style: const TextStyle(fontFamily: 'serif'),
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: darkNavy),
+          suffixIcon: suffixIcon, // Added here
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
         ),
       ),
     );

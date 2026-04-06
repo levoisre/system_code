@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-// FIXED: Path now correctly points to index.dart in the student_ui folder
+// Points to your main navigation shell
 import '../index.dart'; 
 import 'leaderboard.dart';
 
 // Ensure these sub-mode imports match your actual file structure
 import 'result_modes/true_or_false_answer.dart';
-import 'result_modes/identification_answer.dart';
 
 class QuizResultsScreen extends StatelessWidget {
   final String quizTitle;
@@ -73,12 +72,8 @@ class QuizResultsScreen extends StatelessWidget {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const LeaderboardScreen()));
                         }),
                         _circleActionButton(Icons.quiz_outlined, "Review Answers", () {
-                          // Logic to switch between review modes based on title
-                          if (quizTitle.toLowerCase().contains("identification")) {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewIdentificationScreen()));
-                          } else {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewAnswersScreen()));
-                          }
+                          // Simplified logic: routes to Review screen
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewAnswersScreen()));
                         }),
                       ],
                     ),
@@ -86,16 +81,26 @@ class QuizResultsScreen extends StatelessWidget {
                     const Divider(thickness: 1, color: Colors.black12),
                     const SizedBox(height: 20),
 
+                    // --- FIXED: BACK TO ASSESSMENT LIST ---
                     _exitButton(context, "BACK TO ASSESSMENT LIST", true, () {
-                      Navigator.pop(context);
+                      // Navigates to StudentIndex and forces the Assessment Tab (Index 3)
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => StudentIndex(initialIndex: 3),
+                        ),
+                        (Route<dynamic> route) => false,
+                      );
                     }),
+                    
                     const SizedBox(height: 12),
                     
-                    // --- THE FIXED NAVIGATION BUTTON ---
+                    // --- FIXED: GO TO HOME PAGE ---
                     _exitButton(context, "GO TO HOME PAGE", false, () {
-                      // Using pushAndRemoveUntil to clear quiz history and return to the main Nav Shell
+                      // Navigates to StudentIndex and forces the Home Tab (Index 0)
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const StudentIndex()),
+                        MaterialPageRoute(
+                          builder: (context) => StudentIndex(initialIndex: 0),
+                        ),
                         (Route<dynamic> route) => false,
                       );
                     }),
@@ -132,7 +137,10 @@ class QuizResultsScreen extends StatelessWidget {
         Container(
           width: 85, height: height,
           margin: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.vertical(top: Radius.circular(25))),
+          decoration: BoxDecoration(
+            color: color, 
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(25))
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -154,9 +162,21 @@ class QuizResultsScreen extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_StatTile("%100", "Completion"), _StatTile("20", "Total Qs")]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround, 
+            children: [
+              _StatTile("%100", "Completion"), 
+              _StatTile("20", "Total Qs")
+            ]
+          ),
           Padding(padding: EdgeInsets.symmetric(vertical: 15), child: Divider(thickness: 1, color: Colors.black12)),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_StatTile("15", "Correct", valueColor: Colors.green), _StatTile("5", "Incorrect", valueColor: Colors.red)]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround, 
+            children: [
+              _StatTile("15", "Correct", valueColor: Colors.green), 
+              _StatTile("5", "Incorrect", valueColor: Colors.red)
+            ]
+          ),
         ],
       ),
     );
@@ -166,7 +186,11 @@ class QuizResultsScreen extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Column(children: [
-        Container(padding: const EdgeInsets.all(18), decoration: const BoxDecoration(color: darkNavy, shape: BoxShape.circle), child: Icon(icon, color: Colors.white, size: 28)),
+        Container(
+          padding: const EdgeInsets.all(18), 
+          decoration: const BoxDecoration(color: darkNavy, shape: BoxShape.circle), 
+          child: Icon(icon, color: Colors.white, size: 28)
+        ),
         const SizedBox(height: 10),
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkNavy, fontFamily: 'serif')),
       ]),
@@ -183,7 +207,15 @@ class QuizResultsScreen extends StatelessWidget {
           side: const BorderSide(color: darkNavy, width: 2),
           shape: const StadiumBorder(),
         ),
-        child: Text(label, style: TextStyle(color: primary ? Colors.white : darkNavy, fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'serif')),
+        child: Text(
+          label, 
+          style: TextStyle(
+            color: primary ? Colors.white : darkNavy, 
+            fontWeight: FontWeight.bold, 
+            fontSize: 14, 
+            fontFamily: 'serif'
+          )
+        ),
       ),
     );
   }

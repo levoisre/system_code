@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'new_course.dart';
 import 'edit_course.dart';
-import '../home_page/dashboard.dart'; // Correctly points to your existing file
+import '../home_page/dashboard.dart'; // Points to your updated InstructorDashboard
 
 class InstructorCourseList extends StatefulWidget {
   const InstructorCourseList({super.key});
@@ -15,12 +15,12 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
   static const Color bgColor = Color(0xFFF0F2F5);
   static const Color cardBorder = Color(0xFFD1D9E6);
 
-  // --- UPDATED MASTER DATA ---
+  // --- MASTER DATA ---
   final List<Map<String, dynamic>> _allCourses = [
     {
       "title": "Data Structures",
       "sched": "MonWed 7:30 AM - 9:30 AM",
-      "code": "DSA4780328",
+      "code": "CPE 401", 
       "room": "Lab 402",
       "desc": "Focuses on the efficient organization and storage of data.",
       "color": const Color(0xFFC8E6C9),
@@ -30,7 +30,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
     {
       "title": "Artificial Intelligence",
       "sched": "TueThu 10:00 AM - 12:00 PM",
-      "code": "AI8493744",
+      "code": "AI 302",
       "room": "Room 305",
       "desc": "Introduction to heuristic search and machine learning models.",
       "color": const Color(0xFFF8BBD0),
@@ -68,8 +68,8 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
       appBar: AppBar(
         backgroundColor: darkNavy,
         elevation: 0,
-        title: const Text('COURSES', 
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif', letterSpacing: 1.1)),
+        title: const Text('MY COURSES', 
+          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
         centerTitle: true,
       ),
       body: Column(
@@ -83,7 +83,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 18,
                       mainAxisSpacing: 18,
-                      childAspectRatio: 1.05, // Adjusted to fit description
+                      childAspectRatio: 0.95, 
                     ),
                     itemCount: _filteredCourses.length,
                     itemBuilder: (context, index) => _courseCard(context, _filteredCourses[index]),
@@ -132,14 +132,14 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                 final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const NewCoursePage()));
                 if (result != null && result is Map<String, dynamic>) {
                   setState(() {
-                    result['students'] = []; // Default empty list
+                    result['students'] = result['students'] ?? [];
                     _allCourses.add(result);
                     _applyFilters();
                   });
                 }
               },
               icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text("CREATE NEW COURSE", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+              label: const Text("CREATE NEW COURSE", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: darkNavy, 
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -173,62 +173,57 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cardBorder, width: 1),
-        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Color strip at the top
           Container(height: 6, decoration: BoxDecoration(color: course['color'] ?? darkNavy, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)))),
-          
-          // Edit Icon
-          Positioned(
-            top: 10, right: 10,
-            child: GestureDetector(
-              onTap: () async {
-                final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditCoursePage(courseData: course)));
-                if (result == "DELETE") {
-                  setState(() { _allCourses.removeWhere((item) => item['code'] == course['code']); _applyFilters(); });
-                } else if (result != null && result is Map<String, dynamic>) {
-                  setState(() {
-                    int index = _allCourses.indexWhere((item) => item['code'] == course['code']);
-                    if (index != -1) { _allCourses[index] = result; _applyFilters(); }
-                  });
-                }
-              },
-              child: const Icon(Icons.edit_note_rounded, color: darkNavy, size: 24),
-            ),
-          ),
-
           Padding(
-            padding: const EdgeInsets.fromLTRB(15, 22, 15, 15),
+            padding: const EdgeInsets.all(15),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(course['title'] ?? "Untitled", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy, fontFamily: 'serif'), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                _cardDetailRow(Icons.schedule_rounded, course['sched'] ?? "N/A"),
-                _cardDetailRow(Icons.location_on_rounded, course['room'] ?? "N/A"),
-                const SizedBox(height: 8),
-                Text(
-                  course['desc'] ?? "No description provided.",
-                  style: const TextStyle(fontSize: 9, color: Colors.black45, fontStyle: FontStyle.italic),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(course['title'] ?? "Untitled", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => EditCoursePage(courseData: course))),
+                      child: const Icon(Icons.edit_note_rounded, color: darkNavy, size: 20),
+                    ),
+                  ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 8),
+                _cardDetailRow(Icons.tag_rounded, course['code'] ?? "N/A"),
+                _cardDetailRow(Icons.schedule_rounded, course['sched'] ?? "N/A"),
+                const SizedBox(height: 8),
+                Text(course['desc'] ?? "", style: const TextStyle(fontSize: 9, color: Colors.black45), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 12),
                 
-                // --- FUNCTIONAL MANAGE BUTTON ---
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => CourseDashboard(courseData: course)),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity, height: 32,
-                    decoration: BoxDecoration(color: darkNavy, borderRadius: BorderRadius.circular(10)),
-                    child: const Center(child: Text("MANAGE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5))),
+                // --- FIXED: Navigates using InstructorDashboard with all required arguments ---
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InstructorDashboard(
+                            subjectCode: course['code'] ?? "N/A",
+                            subjectName: course['title'] ?? "N/A",
+                            courseData: course, // Passes the full map including students
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkNavy,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      elevation: 0,
+                    ),
+                    child: const Text("MANAGE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -244,7 +239,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF8E8E93)),
+          Icon(icon, size: 12, color: Colors.grey),
           const SizedBox(width: 6),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 10, color: Color(0xFF636366)), overflow: TextOverflow.ellipsis)),
         ],

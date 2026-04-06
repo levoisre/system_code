@@ -8,30 +8,43 @@ import 'assessment_page/assessments_list.dart';
 import 'profile_page/profile.dart';
 
 class StudentIndex extends StatefulWidget {
-  const StudentIndex({super.key});
+  // FIXED: Added initialIndex to allow routing from Assessment Results
+  final int initialIndex;
+
+  const StudentIndex({
+    super.key,
+    this.initialIndex = 0, // Defaults to Home
+  });
 
   @override
   State<StudentIndex> createState() => _StudentIndexState();
 }
 
 class _StudentIndexState extends State<StudentIndex> {
-  // Original Navy Blue Theme
   static const Color originalNavy = Color(0xFF000051); 
-  int _selectedIndex = 0;
+  
+  // FIXED: Using 'late' to initialize with the passed index
+  late int _selectedIndex;
 
-  // 2. PAGE LIST - Updated with exact class names from your screenshots
+  // 2. PAGE LIST - Preserved your class names
   final List<Widget> _pages = [
     const StudentHome(),               
     const StudentAttendanceHistory(),  
-    const GradesHistoryPage(), // Matches class in grade_history.dart
-    const AssessmentPage(),    // Matches class in assessments_list.dart
-    const ProfilePage(),       // Matches class in profile.dart
+    const GradesHistoryPage(), 
+    const AssessmentPage(),    
+    const ProfilePage(),       
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // FIXED: This ensures the app opens the tab requested by the previous screen
+    _selectedIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // IndexedStack preserves the state of each tab
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
@@ -49,7 +62,6 @@ class _StudentIndexState extends State<StudentIndex> {
             backgroundColor: originalNavy,
             selectedItemColor: Colors.white,
             unselectedItemColor: Colors.white.withValues(alpha: 0.5),
-            // Serif font style for the original high-fidelity design
             selectedLabelStyle: const TextStyle(
               fontFamily: 'serif', 
               fontSize: 11, 

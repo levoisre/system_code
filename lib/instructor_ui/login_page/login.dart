@@ -12,6 +12,9 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  // Track password visibility state
+  bool _isObscured = true;
+
   static const Color darkNavy = Color(0xFF0C1446); 
 
   @override
@@ -166,11 +169,27 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
       ),
       child: TextField(
         controller: controller,
-        obscureText: isPassword,
+        // Uses the state variable if it's a password field
+        obscureText: isPassword ? _isObscured : false,
         style: const TextStyle(fontFamily: 'serif'),
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: darkNavy),
+          // Added the Eye Symbol logic here
+          suffixIcon: isPassword 
+            ? IconButton(
+                icon: Icon(
+                  _isObscured ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.black26,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isObscured = !_isObscured;
+                  });
+                },
+              ) 
+            : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),

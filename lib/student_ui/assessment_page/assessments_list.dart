@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/instuctions.dart';
-// 1. IMPORT YOUR NOTIFICATIONS PAGE
 import 'package:smart_classroom_facilitator_project/student_ui/notification_page/notification.dart';
 
 class AssessmentPage extends StatefulWidget {
@@ -13,44 +12,70 @@ class AssessmentPage extends StatefulWidget {
 class _AssessmentPageState extends State<AssessmentPage> {
   static const Color darkNavy = Color(0xFF00084D);
   static const Color bgGrey = Color(0xFFE5E5E5);
-  
-  String selectedFilter = "All";
 
-  // --- FULL MOCK DATABASE WITH 4 MODES ---
+  String selectedFilter = "All";
+  
+  // 1. ADD SEARCH CONTROLLER AND FILTERED LIST
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, String>> filteredQuizzes = [];
+
+  // --- FULL MOCK DATABASE ---
   final List<Map<String, String>> allQuizzes = [
     {
-      "title": "Crossword: Algorithm Architecture", 
-      "date": "2026-03-30", 
-      "points": "30", 
-      "questions": "6", 
+      "title": "Crossword: Algorithm Architecture",
+      "date": "2026-03-30",
+      "points": "30",
+      "questions": "6",
       "time": "1800",
       "status": "Due"
     },
     {
-      "title": "Quiz 3: Graph Algorithms", 
-      "date": "2026-03-28", 
-      "points": "40", 
-      "questions": "20", 
+      "title": "Quiz 3: Graph Algorithms",
+      "date": "2026-03-28",
+      "points": "40",
+      "questions": "20",
       "time": "30",
       "status": "Due"
     },
     {
-      "title": "Graph & Tree Traversal Identification", 
-      "date": "2026-03-26", 
-      "points": "30", 
-      "questions": "20", 
+      "title": "Graph & Tree Traversal Identification",
+      "date": "2026-03-26",
+      "points": "30",
+      "questions": "20",
       "time": "60",
       "status": "Due"
     },
     {
-      "title": "Unit Test: Mobile Dev", 
-      "date": "2026-03-15", 
-      "points": "15", 
-      "questions": "10", 
+      "title": "Unit Test: Mobile Dev",
+      "date": "2026-03-15",
+      "points": "15",
+      "questions": "10",
       "time": "30",
       "status": "Completed"
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the list with all quizzes
+    filteredQuizzes = allQuizzes;
+  }
+
+  // 2. LOGIC TO FILTER BY BOTH SEARCH TEXT AND TAB STATUS
+  void _performSearch() {
+    setState(() {
+      filteredQuizzes = allQuizzes.where((quiz) {
+        final matchesSearch = quiz['title']!
+            .toLowerCase()
+            .contains(_searchController.text.toLowerCase());
+        
+        final matchesFilter = (selectedFilter == "All") || (quiz['status'] == selectedFilter);
+        
+        return matchesSearch && matchesFilter;
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,20 +85,16 @@ class _AssessmentPageState extends State<AssessmentPage> {
         backgroundColor: darkNavy,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'ASSESSMENTS', 
-          style: TextStyle(
-            color: Colors.white, 
-            fontWeight: FontWeight.bold, 
-            fontSize: 18,
-            fontFamily: 'serif'
-          )
-        ),
+        title: const Text('ASSESSMENTS',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                fontFamily: 'serif')),
         centerTitle: true,
         actions: [
-          // 2. UPDATED NOTIFICATION BUTTON
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white), 
+            icon: const Icon(Icons.notifications, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -86,13 +107,24 @@ class _AssessmentPageState extends State<AssessmentPage> {
       ),
       body: Column(
         children: [
-          // --- SEARCH BAR ---
+          // --- UPDATED SEARCH BAR ---
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: TextField(
+              controller: _searchController,
+              onChanged: (value) => _performSearch(), // Trigger search on type
               decoration: InputDecoration(
                 hintText: "Search assessments...",
                 prefixIcon: const Icon(Icons.search, color: Colors.black45),
+                // Add a clear button when typing
+                suffixIcon: _searchController.text.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear), 
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch();
+                      })
+                  : null,
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -120,25 +152,23 @@ class _AssessmentPageState extends State<AssessmentPage> {
 
           // --- SCROLLABLE LIST ---
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              itemCount: allQuizzes.length,
-              itemBuilder: (context, index) {
-                final quiz = allQuizzes[index];
-                
-                if (selectedFilter != "All" && quiz['status'] != selectedFilter) {
-                  return const SizedBox.shrink();
-                }
+            child: filteredQuizzes.isEmpty 
+              ? const Center(child: Text("No assessments found", style: TextStyle(color: Colors.black45)))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  itemCount: filteredQuizzes.length,
+                  itemBuilder: (context, index) {
+                    final quiz = filteredQuizzes[index];
 
-                return _buildQuizCard(
-                  title: quiz['title']!,
-                  dueDate: quiz['date']!,
-                  points: quiz['points']!,
-                  duration: quiz['time']!,
-                  questions: quiz['questions']!,
-                );
-              },
-            ),
+                    return _buildQuizCard(
+                      title: quiz['title']!,
+                      dueDate: quiz['date']!,
+                      points: quiz['points']!,
+                      duration: quiz['time']!,
+                      questions: quiz['questions']!,
+                    );
+                  },
+                ),
           ),
         ],
       ),
@@ -148,7 +178,12 @@ class _AssessmentPageState extends State<AssessmentPage> {
   Widget _filterTab(String label) {
     bool isSelected = selectedFilter == label;
     return GestureDetector(
-      onTap: () => setState(() => selectedFilter = label),
+      onTap: () {
+        setState(() {
+          selectedFilter = label;
+          _performSearch(); // Re-filter when switching tabs
+        });
+      },
       child: Column(
         children: [
           Text(
@@ -171,6 +206,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
     );
   }
 
+  // ... (Keep your _buildQuizCard and _rowDetail methods exactly as they were) ...
   Widget _buildQuizCard({
     required String title, 
     required String dueDate, 
@@ -186,7 +222,6 @@ class _AssessmentPageState extends State<AssessmentPage> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            // Modern transparency method to avoid lint errors
             color: Colors.black.withValues(alpha: 0.05), 
             blurRadius: 10, 
             offset: const Offset(0, 4)
