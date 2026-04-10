@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-// Standardize this import to your project structure
 import '../assessment_result.dart';
 
 class MultipleChoiceQuizScreen extends StatefulWidget {
@@ -11,9 +10,10 @@ class MultipleChoiceQuizScreen extends StatefulWidget {
   State<MultipleChoiceQuizScreen> createState() => _MultipleChoiceQuizScreenState();
 }
 
-class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
+class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> with SingleTickerProviderStateMixin {
   static const Color darkNavy = Color(0xFF00084D);
-  static const Color timerBlue = Color(0xFF8BAAFF);
+  static const Color stiGold = Color(0xFFFFD100);
+  static const Color errorRed = Color(0xFFC0392B);
 
   // --- STATE ---
   int _secondsLeft = 30;
@@ -22,29 +22,11 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   Timer? _timer;
   String? _selectedOption;
   bool _isNavigating = false;
-  
-  // Simulated Live Data (Heights for the bars)
-  double barA = 0;
-  double barB = 0;
-  double barC = 0;
-  double barD = 0;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
-    
-    // Trigger the "Live" bar animation after a short delay to simulate data fetching
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          barA = 40;
-          barB = 100;
-          barC = 60;
-          barD = 25;
-        });
-      }
-    });
   }
 
   void _startTimer() {
@@ -86,102 +68,94 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E5E5),
+      backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
         backgroundColor: darkNavy,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text('ASSESSMENT', 
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        actions: const [Icon(Icons.notifications, color: Colors.white), SizedBox(width: 15)],
+        title: Text(widget.quizTitle.toUpperCase(), 
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5)),
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTimerSection(),
-            _buildQuestionCard(),
-            
-            // OPTIONS GRID
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      body: Column(
+        children: [
+          _buildPulsingTimerProgress(),
+          _buildImmersiveHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(child: _optionBtn("A.", "Queue", const Color(0xFF000080))),
-                      const SizedBox(width: 15),
-                      Expanded(child: _optionBtn("C.", "Linked List", const Color(0xFFE67E22))),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  Row(
-                    children: [
-                      Expanded(child: _optionBtn("B.", "Stack", const Color(0xFF2ECC71))),
-                      const SizedBox(width: 15),
-                      Expanded(child: _optionBtn("D.", "Binary Tree", const Color(0xFFC0392B))),
-                    ],
-                  ),
+                  _buildQuestionCard(),
+                  const SizedBox(height: 30),
+                  _buildGamifiedOption("A", "Queue", const Color(0xFF3498DB), Icons.layers),
+                  _buildGamifiedOption("B", "Stack", const Color(0xFF2ECC71), Icons.align_vertical_bottom),
+                  _buildGamifiedOption("C", "Linked List", const Color(0xFFE67E22), Icons.link),
+                  _buildGamifiedOption("D", "Binary Tree", const Color(0xFF9B59B6), Icons.account_tree_outlined),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
-
-            // LIVE RESPONSES SECTION
-            _buildLiveResponses(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      color: Colors.white,
-      child: Column(
-        children: [
-          Text(widget.quizTitle, 
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif')),
-          const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _Stat(Icons.star_border, "40 points"),
-              _Stat(Icons.assignment_outlined, "20 questions"),
-              _Stat(Icons.access_time, "30 seconds"),
-            ],
           ),
+          _buildInteractiveFooter(),
         ],
       ),
     );
   }
 
-  Widget _buildTimerSection() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.access_time, size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: _progressValue,
-                    backgroundColor: Colors.white,
-                    valueColor: const AlwaysStoppedAnimation<Color>(timerBlue),
-                    minHeight: 12,
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildPulsingTimerProgress() {
+    return Container(
+      height: 8,
+      width: double.infinity,
+      color: Colors.black.withValues(alpha: 0.05),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: _progressValue,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _progressValue < 0.3 ? errorRed : const Color(0xFF4A90E2),
+                _progressValue < 0.3 ? errorRed.withValues(alpha: 0.8) : Colors.cyanAccent,
+              ],
+            ),
           ),
-          const SizedBox(height: 5),
-          Text("$_secondsLeft Seconds left", style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImmersiveHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+      decoration: const BoxDecoration(
+        color: darkNavy,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _heroBadge(Icons.auto_awesome, "STAGE 4"),
+          _heroBadge(Icons.bolt, "BONUS: 2.5x", isHighlighted: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroBadge(IconData icon, String text, {bool isHighlighted = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isHighlighted ? stiGold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: isHighlighted ? stiGold : Colors.white24, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: isHighlighted ? stiGold : Colors.white, size: 16),
+          const SizedBox(width: 8),
+          Text(text, style: TextStyle(color: isHighlighted ? stiGold : Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
         ],
       ),
     );
@@ -190,119 +164,114 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   Widget _buildQuestionCard() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
+      padding: const EdgeInsets.all(35),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(35),
+        boxShadow: [
+          BoxShadow(color: darkNavy.withValues(alpha: 0.08), blurRadius: 25, offset: const Offset(0, 12))
+        ],
+      ),
       child: const Text(
         "Which data structure uses LIFO (Last In First Out) order?",
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, fontFamily: 'serif'),
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'serif', height: 1.4, color: darkNavy),
       ),
     );
   }
 
-  Widget _optionBtn(String label, String text, Color color) {
+  Widget _buildGamifiedOption(String label, String text, Color color, IconData icon) {
     bool isSelected = _selectedOption == label;
-    return GestureDetector(
-      onTap: () {
-        if (_isNavigating) return;
-        setState(() => _selectedOption = label);
-        // Short delay to let the student see their selection before transitioning
-        Future.delayed(const Duration(milliseconds: 600), _navigateToResults);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: isSelected ? color : Colors.transparent, width: 2),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 12,
-              backgroundColor: color,
-              child: Text(label.replaceAll(".", ""), style: const TextStyle(color: Colors.white, fontSize: 12)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: GestureDetector(
+        onTap: () {
+          if (_isNavigating) return;
+          setState(() => _selectedOption = label);
+          Future.delayed(const Duration(milliseconds: 500), _navigateToResults);
+        },
+        child: AnimatedScale(
+          scale: isSelected ? 0.96 : 1.0,
+          duration: const Duration(milliseconds: 100),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isSelected ? color : Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isSelected ? color : Colors.black.withValues(alpha: 0.08), 
+                width: 2.5
+              ),
+              boxShadow: [
+                if (isSelected) 
+                  BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 8))
+                else 
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5, offset: const Offset(0, 2))
+              ],
             ),
-            const SizedBox(width: 10),
-            Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          ],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white.withValues(alpha: 0.25) : color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: isSelected ? Colors.white : color, size: 22),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(text, 
+                    style: TextStyle(
+                      fontSize: 17, 
+                      fontWeight: FontWeight.w800, 
+                      color: isSelected ? Colors.white : Colors.black87
+                    )
+                  ),
+                ),
+                if (isSelected) 
+                  const CircleAvatar(
+                    radius: 12,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.check, color: Colors.green, size: 16),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildLiveResponses() {
+  Widget _buildInteractiveFooter() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(30, 20, 30, 35),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.analytics_outlined, size: 20, color: darkNavy),
-              SizedBox(width: 10),
-              Text("Live Responses", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
-            ],
-          ),
-          const SizedBox(height: 25),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _bar("A", barA, const Color(0xFF000080)),
-              _bar("B", barB, const Color(0xFF2ECC71)),
-              _bar("C", barC, const Color(0xFFE67E22)),
-              _bar("D", barD, const Color(0xFFC0392B)),
+              Icon(Icons.timer_outlined, color: _secondsLeft < 10 ? errorRed : darkNavy, size: 20),
+              const SizedBox(width: 8),
+              Text("$_secondsLeft", 
+                style: TextStyle(
+                  fontWeight: FontWeight.w900, 
+                  fontSize: 16, 
+                  color: _secondsLeft < 10 ? errorRed : darkNavy,
+                  fontFamily: 'monospace'
+                )
+              ),
+              Text("s", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: _secondsLeft < 10 ? errorRed : darkNavy)),
             ],
           ),
+          const Text("THINK FAST!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.black26, letterSpacing: 2)),
         ],
       ),
-    );
-  }
-
-  Widget _bar(String label, double height, Color color) {
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(seconds: 1),
-          curve: Curves.easeOutQuart,
-          width: 35,
-          height: height,
-          decoration: BoxDecoration(
-            // FIXED: Using withValues(alpha:) to resolve deprecation warnings
-            color: color.withValues(alpha: 0.9), 
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.3), 
-                blurRadius: 4, 
-                offset: const Offset(0, 2)
-              )
-            ]
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
-      ],
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _Stat(this.icon, this.text);
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.black45), 
-        const SizedBox(width: 4), 
-        Text(text, style: const TextStyle(fontSize: 11, color: Colors.black45))
-      ]
     );
   }
 }

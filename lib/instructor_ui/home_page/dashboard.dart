@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../notification_page/notification.dart'; 
-import '../attendance_page/attendance_shell.dart';
-import '../recitation_page/recitation_facilitator.dart'; 
-import '../sidebar.dart'; // Ensure this points to your common sidebar file
+
+// Note: attendance_shell.dart and recitation_facilitator.dart imports removed 
+// because navigation is now handled globally by InstructorIndex.
 
 class InstructorDashboard extends StatefulWidget {
   final String subjectCode;
@@ -21,7 +21,7 @@ class InstructorDashboard extends StatefulWidget {
 }
 
 class _InstructorDashboardState extends State<InstructorDashboard> {
-  static const Color darkNavy = Color(0xFF000080);
+  static const Color darkNavy = Color(0xFF0D125A);
   static const Color bgColor = Color(0xFFF8FAFC); 
   static const Color accentGreen = Color(0xFF43A047);
   static const Color accentRed = Color(0xFFE53935);
@@ -49,74 +49,64 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Row(
+    return Material(
+      color: bgColor,
+      child: Column(
         children: [
-          // --- INTEGRATED GLOBAL SIDEBAR ---
-          InstructorSidebar(
-            currentPage: "Dashboard",
-            onPageChanged: (index) {
-              // Since this is the main dashboard, index changes are 
-              // usually handled by the parent InstructorIndex.
-            },
-          ),
-          
+          _buildMinimalHeader(),
           Expanded(
-            child: Column(
-              children: [
-                _buildMinimalHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildPopStatCard(
-                                "Total Attendance", 
-                                _attendancePercentage, 
-                                _presentCount, 
-                                accentGreen,
-                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => InstructorAttendanceHistory(
-                                  subjectCode: widget.subjectCode,
-                                  subjectName: widget.subjectName,
-                                ))),
-                              )
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildPopStatCard(
-                                "Class Average Score", 
-                                "${_classAverage.toInt()}%", 
-                                "Grade: A-", 
-                                Colors.purple,
-                                () => Navigator.push(context, MaterialPageRoute(builder: (context) => RecitationFacilitatorPage(
-                                  subjectCode: widget.subjectCode,
-                                  subjectName: widget.subjectName,
-                                ))),
-                              )
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 3, child: _buildPopRosterCard()),
-                            const SizedBox(width: 24),
-                            Expanded(flex: 2, child: _buildPopActivationCard()),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _buildBottomActions(),
-                      ],
-                    ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: Column(
+                children: [
+                  // --- TOP STAT CARDS ---
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPopStatCard(
+                          "Total Attendance", 
+                          _attendancePercentage, 
+                          _presentCount, 
+                          accentGreen,
+                          () { /* Logic handled by sidebar navigation */ },
+                        )
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: _buildPopStatCard(
+                          "Class Average Score", 
+                          "${_classAverage.toInt()}%", 
+                          "Grade: A-", 
+                          Colors.purple,
+                          () { /* Logic handled by sidebar navigation */ },
+                        )
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  
+                  // --- ROSTER AND ACTIVATION ---
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildPopRosterCard()),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 2, child: _buildPopActivationCard()),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // --- SYSTEM ACTION BUTTONS ---
+                  _buildBottomActions(),
+                ],
+              ),
             ),
           ),
         ],
@@ -131,7 +121,7 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 32),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -194,7 +184,11 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
   Widget _buildPopRosterCard() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15)]
+      ),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text("CLASS ROSTER", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: darkNavy)),
@@ -204,7 +198,12 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
             child: TextField(
               controller: _searchController, 
               onChanged: _onSearchChanged, 
-              decoration: const InputDecoration(hintText: "Search...", prefixIcon: Icon(Icons.search, size: 18), border: InputBorder.none)
+              decoration: const InputDecoration(
+                hintText: "Search...", 
+                prefixIcon: Icon(Icons.search, size: 18), 
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.only(top: 8)
+              )
             ),
           ),
         ]),
@@ -216,9 +215,15 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
             itemCount: _filteredStudents.length,
             separatorBuilder: (ctx, i) => const SizedBox(width: 20),
             itemBuilder: (ctx, i) => Column(children: [
-              const CircleAvatar(backgroundColor: Color(0xFFF1F5F9), child: Icon(Icons.person, color: darkNavy)),
+              const CircleAvatar(
+                backgroundColor: Color(0xFFF1F5F9), 
+                child: Icon(Icons.person, color: darkNavy)
+              ),
               const SizedBox(height: 8),
-              Text(_filteredStudents[i].toString().split(' ')[0], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              Text(
+                _filteredStudents[i].toString().split(' ')[0], 
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black87)
+              ),
             ]),
           ),
         ),
@@ -232,6 +237,7 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15)],
         border: Border.all(color: _isActivated ? accentGreen : Colors.transparent, width: 2),
       ),
       child: Column(children: [
@@ -239,7 +245,10 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
         const SizedBox(height: 20),
         Icon(Icons.wifi_tethering_rounded, color: _isActivated ? accentGreen : Colors.grey[300], size: 60),
         const SizedBox(height: 10),
-        Text(_isActivated ? "SYSTEM LIVE" : "SYSTEM IDLE", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: _isActivated ? accentGreen : Colors.grey)),
+        Text(
+          _isActivated ? "SYSTEM LIVE" : "SYSTEM IDLE", 
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: _isActivated ? accentGreen : Colors.grey)
+        ),
       ]),
     );
   }
@@ -259,7 +268,11 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
         onPressed: tap, 
         icon: Icon(icon, color: Colors.white), 
         label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
-        style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color, 
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+        )
       )
     );
   }

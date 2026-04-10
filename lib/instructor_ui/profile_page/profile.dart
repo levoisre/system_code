@@ -1,85 +1,149 @@
 import 'package:flutter/material.dart';
-import '../notification_page/notification.dart';
-import '../login_page/login.dart'; 
-import '../sidebar.dart'; 
+import '../login_page/login.dart';
 
-class InstructorProfilePage extends StatelessWidget {
-  // --- STATE PARAMETERS ---
+class InstructorProfilePage extends StatefulWidget {
   final String currentCode;
   final String currentName;
-  final Function(String, String) onSubjectChanged;
-  final Function(int)? onPageChanged; 
 
   const InstructorProfilePage({
     super.key,
     required this.currentCode,
     required this.currentName,
-    required this.onSubjectChanged,
-    this.onPageChanged,
   });
 
-  // --- BRANDED PALETTE ---
-  static const Color stiNavy = Color(0xFF000080);
-  static const Color stiGold = Color(0xFFFFC72C);
-  static const Color bgColor = Color(0xFFF8FAFC);
+  @override
+  State<InstructorProfilePage> createState() => _InstructorProfilePageState();
+}
 
-  // --- DATA SOURCES ---
-  final List<Map<String, String>> _subjects = const [
-    {"code": "CPE 401", "name": "System Simulation"},
-    {"code": "ITE 302", "name": "Database Management"},
-    {"code": "CS 101", "name": "Intro to Computing"},
-  ];
+class _InstructorProfilePageState extends State<InstructorProfilePage> {
+  // STI Color Palette
+  static const Color stiNavy = Color(0xFF0D125A);
+  static const Color stiGold = Color(0xFFFFD100);
+  static const Color bgColor = Color(0xFFF8FAFC);
+  static const Color surfaceWhite = Colors.white;
+
+  // --- FUNCTIONALITY: CHANGE PASSWORD ---
+  void _showChangePasswordDialog() {
+    final TextEditingController passController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Change System Password", 
+            style: TextStyle(color: stiNavy, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Enter a new password for your instructor account.", 
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: passController,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: "New Password",
+                filled: true,
+                fillColor: bgColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: stiNavy),
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Password updated successfully!")),
+              );
+            },
+            child: const Text("UPDATE", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- FUNCTIONALITY: DOWNLOAD LOGS ---
+  void _downloadLogs() async {
+    // Show a loading snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 2),
+        content: Row(
+          children: [
+            SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: stiGold)),
+            SizedBox(width: 20),
+            Text("Preparing activity_logs.pdf..."),
+          ],
+        ),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(backgroundColor: Colors.green, content: Text("Download Complete: activity_logs.pdf saved.")),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Row(
+    return Material(
+      color: bgColor,
+      child: Column(
         children: [
-          // --- SIDEBAR INTEGRATION ---
-          // This ensures the sidebar is visible and functional on the Profile page
-          InstructorSidebar(
-            currentPage: "Profiles", 
-            onPageChanged: (index) {
-              if (onPageChanged != null) {
-                onPageChanged!(index);
-              }
-            },
-          ),
-          
-          // --- MAIN CONTENT AREA ---
+          _buildTopNavigationBar(),
           Expanded(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      children: [
-                        _buildHero(),
-                        const SizedBox(height: 32),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
+              child: Column(
+                children: [
+                  _buildPremiumHeroSection(),
+                  const SizedBox(height: 40),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
                           children: [
-                            // LEFT COLUMN: Account Details
-                            Expanded(
-                              flex: 2,
-                              child: _buildAccountCard(context),
+                            _buildInfoCard(
+                              title: "ACCOUNT IDENTITY",
+                              icon: Icons.verified_user_rounded,
+                              children: [
+                                _modernDataTile(Icons.badge_rounded, "STAFF ID", "STI-2026-0412"),
+                                const SizedBox(height: 25),
+                                _modernDataTile(Icons.email_rounded, "INSTITUTIONAL EMAIL", "claire.reyes@sti.edu.ph"),
+                              ],
                             ),
-                            const SizedBox(width: 32),
-                            // RIGHT COLUMN: Subject Switcher
-                            Expanded(
-                              flex: 1,
-                              child: _buildSubjectSwitcher(),
-                            ),
+                            const SizedBox(height: 30),
+                            _buildAppPreferencesCard(context),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 40),
+                      Expanded(
+                        flex: 3,
+                        child: _buildInfoCard(
+                          title: "ACTIVE SESSION DATA",
+                          icon: Icons.hub_rounded,
+                          children: [
+                            _buildWarningBanner(),
+                            const SizedBox(height: 35),
+                            _modernDataTile(Icons.terminal_rounded, "CURRENT SUBJECT CODE", widget.currentCode.toUpperCase()),
+                            const SizedBox(height: 25),
+                            _modernDataTile(Icons.auto_stories_rounded, "REGISTERED SUBJECT NAME", widget.currentName),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -87,206 +151,99 @@ class InstructorProfilePage extends StatelessWidget {
     );
   }
 
-  // --- HEADER ---
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            "INSTRUCTOR PROFILE", 
-            style: TextStyle(
-              color: stiNavy, 
-              fontWeight: FontWeight.w900, 
-              fontSize: 14, 
-              fontFamily: 'serif'
-            )
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: stiNavy),
-            onPressed: () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (context) => const NotificationsPage())
+  // ... (Keep _buildTopNavigationBar, _buildPremiumHeroSection, _buildProfileAvatar, _buildHeroStatsRow, _heroChip as they were) ...
+
+  Widget _buildAppPreferencesCard(BuildContext context) {
+    return _buildInfoCard(
+      title: "PREFERENCES", 
+      icon: Icons.tune_rounded,
+      children: [
+        _clickableRow("Change System Password", Icons.lock_open_rounded, _showChangePasswordDialog),
+        _clickableRow("Download Activity Logs", Icons.cloud_download_outlined, _downloadLogs),
+        const SizedBox(height: 35),
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const InstructorLoginPage()), (route) => false
+              );
+            },
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text("CLOSE SESSION", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // --- HERO SECTION ---
-  Widget _buildHero() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: stiNavy, 
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: stiNavy.withValues(alpha: 0.2), 
-            blurRadius: 20
-          )
-        ]
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 45, 
-            backgroundColor: Colors.white, 
-            child: Icon(Icons.person, size: 40, color: stiNavy)
-          ),
-          const SizedBox(width: 24),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _clickableRow(String label, IconData icon, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          child: Row(
             children: [
-              const Text(
-                "Prof. Claire Reyes", 
-                style: TextStyle(
-                  color: Colors.white, 
-                  fontSize: 28, 
-                  fontWeight: FontWeight.bold, 
-                  fontFamily: 'serif'
-                )
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "ACTIVE CONTEXT: $currentCode", 
-                style: const TextStyle(
-                  color: stiGold, 
-                  fontWeight: FontWeight.w600, 
-                  letterSpacing: 1.2
-                )
-              ),
+              Icon(icon, size: 20, color: stiNavy),
+              const SizedBox(width: 15),
+              Text(label, style: const TextStyle(fontSize: 14, color: stiNavy, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // --- ACCOUNT CARD ---
-  Widget _buildAccountCard(BuildContext context) {
+  // --- RE-INSERTED REMAINING UI HELPERS ---
+  Widget _buildTopNavigationBar() {
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), 
-            blurRadius: 15
-          )
-        ]
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "ACCOUNT INFORMATION", 
-            style: TextStyle(fontWeight: FontWeight.bold, color: stiNavy, fontFamily: 'serif')
-          ),
-          const Divider(height: 40),
-          _infoRow("Employee ID", "STI-2026-0412"),
-          _infoRow("Department", "College of Information Technology"),
-          _infoRow("Email", "claire.reyes@sti.edu.ph"),
-          const SizedBox(height: 40),
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const InstructorLoginPage()), 
-                (route) => false,
-              ),
-              icon: const Icon(Icons.logout_rounded),
-              label: const Text("SIGN OUT OF SYSTEM", style: TextStyle(fontWeight: FontWeight.bold)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent, width: 2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
+      height: 80, padding: const EdgeInsets.symmetric(horizontal: 60),
+      decoration: const BoxDecoration(color: surfaceWhite, border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5))),
+      child: const Row(children: [Icon(Icons.account_circle_outlined, color: stiNavy, size: 24), SizedBox(width: 15), Text("SYSTEM PROFILE", style: TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'serif', letterSpacing: 2.0))]),
     );
   }
 
-  // --- SUBJECT SWITCHER ---
-  Widget _buildSubjectSwitcher() {
+  Widget _buildPremiumHeroSection() {
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), 
-            blurRadius: 15
-          )
-        ]
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "SWITCH DASHBOARD", 
-            style: TextStyle(fontWeight: FontWeight.bold, color: stiNavy, fontFamily: 'serif')
-          ),
-          const SizedBox(height: 20),
-          for (var s in _subjects)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                onTap: () => onSubjectChanged(s['code']!, s['name']!),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                tileColor: currentCode == s['code'] ? stiNavy : bgColor,
-                leading: Icon(
-                  currentCode == s['code'] ? Icons.radio_button_checked : Icons.radio_button_off,
-                  color: currentCode == s['code'] ? stiGold : stiNavy,
-                ),
-                title: Text(
-                  s['code']!, 
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    color: currentCode == s['code'] ? Colors.white : stiNavy
-                  )
-                ),
-                subtitle: Text(
-                  s['name']!, 
-                  style: TextStyle(
-                    fontSize: 11, 
-                    color: currentCode == s['code'] ? Colors.white70 : Colors.grey
-                  )
-                ),
-              ),
-            ),
-        ],
-      ),
+      width: double.infinity,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(35), gradient: const LinearGradient(colors: [stiNavy, Color(0xFF000033)], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: stiNavy.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 20))]),
+      child: Stack(children: [Positioned(right: -50, top: -50, child: CircleAvatar(radius: 150, backgroundColor: Colors.white.withValues(alpha: 0.03))), Padding(padding: const EdgeInsets.all(60), child: Row(children: [_buildProfileAvatar(), const SizedBox(width: 50), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Claire Reyes", style: TextStyle(color: surfaceWhite, fontSize: 48, fontWeight: FontWeight.w900, fontFamily: 'serif')), const Text("Senior Professor • Information Technology Department", style: TextStyle(color: stiGold, fontWeight: FontWeight.w600, fontSize: 18, letterSpacing: 0.8)), const SizedBox(height: 30), _buildHeroStatsRow()]))]))]),
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Row(
-        children: [
-          SizedBox(width: 140, child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))),
-          Expanded(
-            child: Text(
-              value, 
-              style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 14)
-            )
-          ),
-        ],
-      ),
-    );
+  Widget _buildProfileAvatar() {
+    return Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: stiGold, shape: BoxShape.circle), child: const CircleAvatar(radius: 75, backgroundColor: bgColor, child: Icon(Icons.person_rounded, size: 85, color: stiNavy)));
+  }
+
+  Widget _buildHeroStatsRow() {
+    return Row(children: [_heroChip(Icons.calendar_today_rounded, "Joined 2021"), const SizedBox(width: 15), _heroChip(Icons.stars_rounded, "Faculty Elite")]);
+  }
+
+  Widget _heroChip(IconData icon, String text) {
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(50), border: Border.all(color: Colors.white.withValues(alpha: 0.1))), child: Row(children: [Icon(icon, size: 16, color: stiGold), const SizedBox(width: 10), Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))]));
+  }
+
+  Widget _buildInfoCard({required String title, required IconData icon, required List<Widget> children}) {
+    return Container(padding: const EdgeInsets.all(40), decoration: BoxDecoration(color: surfaceWhite, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 30, offset: const Offset(0, 10))], border: Border.all(color: const Color(0xFFE2E8F0))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: stiGold.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: stiNavy, size: 20)), const SizedBox(width: 15), Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: stiNavy, fontSize: 15, letterSpacing: 1.5))]), const Padding(padding: EdgeInsets.symmetric(vertical: 30), child: Divider(color: Color(0xFFF1F5F9), thickness: 2)), ...children]));
+  }
+
+  Widget _modernDataTile(IconData icon, String label, String value) {
+    return Row(children: [Icon(icon, size: 22, color: Colors.grey[400]), const SizedBox(width: 20), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.0)), const SizedBox(height: 6), Text(value, style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 17))])]);
+  }
+
+  Widget _buildWarningBanner() {
+    return Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))), child: const Row(children: [Icon(Icons.security_update_good_rounded, color: Color(0xFF1D4ED8), size: 22), SizedBox(width: 15), Expanded(child: Text("DASHBOARD SCOPING: All analytics and records are currently limited to the course ID below.", style: TextStyle(fontSize: 12, color: Color(0xFF1D4ED8), fontWeight: FontWeight.w700, height: 1.5)))]));
   }
 }

@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 
-// --- IMPORT YOUR TARGET PAGES ---
-import 'assessment_page/assessment_list.dart';  // ← double-check this path matches your folder
-import 'attendance_page/attendance_shell.dart';
-import 'recitation_page/recitation_facilitator.dart';
-import 'grades_page/grade_history.dart';
-
 class InstructorSidebar extends StatelessWidget {
-  final String currentPage;
-  final Function(int)? onPageChanged;
+  final int selectedIndex;
+  final Function(int) onPageChanged;
 
   const InstructorSidebar({
     super.key,
-    required this.currentPage,
-    this.onPageChanged,
+    required this.selectedIndex,
+    required this.onPageChanged,
   });
 
+  // STI Official Brand Palette
   static const Color stiNavy = Color(0xFF0D125A);
   static const Color stiYellow = Color(0xFFFFD100);
 
@@ -26,93 +21,70 @@ class InstructorSidebar extends StatelessWidget {
       color: stiNavy,
       child: Column(
         children: [
-          const SizedBox(height: 40),
-
-          _navItem(
-            context,
-            Icons.home_outlined,
-            "Home",
-            currentPage == "Home" || currentPage == "Dashboard",
-            indexTab: 0,
-          ),
-
-          _navItem(context, Icons.calendar_month_outlined, "Attendance",
-              currentPage == "Attendance"),
-
-          _navItem(context, Icons.verified_outlined, "Recitation",
-              currentPage == "Recitation"),
-
-          _navItem(context, Icons.grade_outlined, "Grades",
-              currentPage == "Grades"),
-
-          _navItem(context, Icons.quiz_outlined, "Assessments",
-              currentPage == "Assessments"),
-
-          const Expanded(child: SizedBox.shrink()),
-
-          _navItem(
-            context,
-            Icons.account_circle_outlined,
-            "Profiles",
-            currentPage == "Profiles" || currentPage == "Profile",
-            indexTab: 1,
-          ),
           const SizedBox(height: 20),
+          
+          // --- SCROLLABLE MAIN NAVIGATION ---
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _navItem(Icons.home_outlined, "Home", selectedIndex == 0, 0),
+                  _navItem(Icons.calendar_month_outlined, "Attendance", selectedIndex == 1, 1),
+                  _navItem(Icons.verified_outlined, "Recitation", selectedIndex == 2, 2),
+                  _navItem(Icons.grade_outlined, "Grades", selectedIndex == 3, 3),
+                  _navItem(Icons.quiz_outlined, "Assessments", selectedIndex == 4, 4),
+                ],
+              ),
+            ),
+          ),
+
+          // --- FIXED PROFILE TAB AT BOTTOM ---
+          _navItem(Icons.account_circle_outlined, "Profiles", selectedIndex == 5, 5),
+          const SizedBox(height: 10),
         ],
       ),
     );
   }
 
-  Widget _navItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    bool isSelected, {
-    int? indexTab,
-  }) {
+  Widget _navItem(IconData icon, String label, bool isSelected, int index) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          if (indexTab != null && onPageChanged != null) {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-            onPageChanged!(indexTab);
-          } else {
-            _handleDirectNavigation(context, label);
-          }
-        },
-        child: Container(
+        // ONE-TAP: Notifies the Index shell to swap the view immediately
+        onTap: () => onPageChanged(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200), // Adds a smooth fade transition
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
+            // The Yellow Indicator Line on the left
             border: Border(
               left: BorderSide(
                 color: isSelected ? stiYellow : Colors.transparent,
                 width: 4,
               ),
             ),
-            color: isSelected
-                ? Colors.white.withValues(alpha: 0.05)
+            // Subtle highlight background when active
+            color: isSelected 
+                ? Colors.white.withValues(alpha: 0.05) 
                 : Colors.transparent,
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
                 color: isSelected ? stiYellow : Colors.white70,
-                size: 30,
+                size: 28,
               ),
               const SizedBox(height: 6),
               Text(
                 label.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 8,
                   color: isSelected ? stiYellow : Colors.white70,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontFamily: 'serif',
                   letterSpacing: 0.5,
                 ),
@@ -122,33 +94,5 @@ class InstructorSidebar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _handleDirectNavigation(BuildContext context, String label) {
-    Widget? target;
-    final String normalizedLabel = label.toLowerCase();
-
-    const String code = "CPE 401";
-    const String name = "System Simulation";
-
-    if (normalizedLabel.contains("assessment")) {
-      target = AssessmentHubPage(); // ✅ No const — not a const constructor
-    } else if (normalizedLabel.contains("attendance")) {
-      target = const InstructorAttendanceHistory(
-          subjectCode: code, subjectName: name);
-    } else if (normalizedLabel.contains("recitation")) {
-      target = const RecitationFacilitatorPage(
-          subjectCode: code, subjectName: name);
-    } else if (normalizedLabel.contains("grade")) {
-      target = const GradesManagementPage(
-          subjectCode: code, subjectName: name);
-    }
-
-    if (target != null && currentPage != label) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => target!),
-      );
-    }
   }
 }

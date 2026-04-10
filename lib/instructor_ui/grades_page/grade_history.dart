@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../sidebar.dart';
-import '../notification_page/notification.dart';
+import '../notification_page/notification.dart'; 
 
 class GradesManagementPage extends StatefulWidget {
-  // --- ADDED: Parameters to receive global state ---
   final String subjectCode;
   final String subjectName;
 
@@ -18,7 +16,6 @@ class GradesManagementPage extends StatefulWidget {
 }
 
 class _GradesManagementPageState extends State<GradesManagementPage> {
-  // --- BRANDED PALETTE ---
   static const Color stiNavy = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF8FAFC);
   static const Color tableHeaderColor = Color(0xFFF1F5F9);
@@ -29,7 +26,6 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
   String _searchQuery = "";
   String _selectedDate = "03/09/26";
 
-  // --- MOCK DATA ---
   final List<Map<String, dynamic>> _allGrades = [
     {"name": "Garcia, Maria", "q1": "20/20", "q2": "12/15", "q3": "24/25", "points": "6870 pts", "progress": "87%", "date": "03/09/26"},
     {"name": "Hinks, Jet", "q1": "14/20", "q2": "12/15", "q3": "15/25", "points": "5780 pts", "progress": "85%", "date": "03/09/26"},
@@ -48,6 +44,12 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
     _applyFilters();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _applyFilters() {
     setState(() {
       _filteredGrades = _allGrades.where((item) {
@@ -60,28 +62,15 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Row(
+    // FIXED: Wrapped in Material to provide correct text styling context
+    return Material(
+      color: bgColor,
+      child: Column(
         children: [
-          // --- FIXED: Added the required onPageChanged argument (Line 59 Fix) ---
-          InstructorSidebar(
-            currentPage: "Grades",
-            onPageChanged: (index) {
-              // Since this is a pushed page, we pop to go back to the Index
-              Navigator.pop(context);
-            },
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildStandardHeader("${widget.subjectCode} Grades"),
-                _buildFilterHeader(),
-                _buildActionRow(),
-                Expanded(child: _buildTableCard()),
-              ],
-            ),
-          ),
+          _buildStandardHeader("${widget.subjectCode} Grades"),
+          _buildFilterHeader(),
+          _buildActionRow(),
+          Expanded(child: _buildTableCard()),
         ],
       ),
     );
@@ -203,16 +192,16 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
             future: Future.delayed(const Duration(milliseconds: 2500)),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Column(
+                return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(height: 20),
-                    CircularProgressIndicator(color: stiNavy, strokeWidth: 3),
-                    SizedBox(height: 30),
-                    Text("GENERATING REPORT", style: TextStyle(fontWeight: FontWeight.w900, color: stiNavy, letterSpacing: 1.2)),
-                    SizedBox(height: 10),
-                    Text("Compiling grade history...", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                    const CircularProgressIndicator(color: stiNavy, strokeWidth: 3),
+                    const SizedBox(height: 30),
+                    const Text("GENERATING REPORT", style: TextStyle(fontWeight: FontWeight.w900, color: stiNavy, letterSpacing: 1.2)),
+                    const SizedBox(height: 10),
+                    const Text("Compiling grade history...", textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 20),
                   ],
                 );
               } else {
@@ -273,7 +262,7 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
         ),
         Expanded(
           child: _filteredGrades.isEmpty 
-          ? const Center(child: Text("No records found for this criteria.", style: TextStyle(color: Colors.grey)))
+          ? const Center(child: Text("No records found.", style: TextStyle(color: Colors.grey)))
           : ListView.separated(
             itemCount: _filteredGrades.length,
             separatorBuilder: (ctx, i) => const Divider(height: 1),
@@ -294,12 +283,12 @@ class _GradesManagementPageState extends State<GradesManagementPage> {
     );
   }
 
-  Widget _cell(String text, {required int flex, bool isHeader = false}) {
+  Widget _cell(String? text, {required int flex, bool isHeader = false}) {
     return Expanded(
       flex: flex,
       child: Center(
         child: Text(
-          text,
+          text ?? "",
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: isHeader ? 10 : 12,

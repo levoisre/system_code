@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-// REMOVED: The two broken imports that were causing the "File not found" errors
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/multiple_choice_assessment.dart';
-import 'package:smart_classroom_facilitator_project/student_ui/assessment_page/assessment_modes/true_or_false_assessment.dart';
+import 'assessment_modes/multiple_choice_assessment.dart';
+import 'assessment_modes/true_or_false_assessment.dart';
+import 'assessment_modes/identification_assessment.dart'; 
+import 'assessment_modes/crossword_assessment.dart';      
 
 class QuizInstructionScreen extends StatelessWidget {
   final String quizTitle;
   final String points;
   final String questions;
   final String duration;
+  final String quizType; 
 
   const QuizInstructionScreen({
     super.key,
@@ -15,6 +17,7 @@ class QuizInstructionScreen extends StatelessWidget {
     required this.points,
     required this.questions,
     required this.duration,
+    required this.quizType, 
   });
 
   static const Color darkNavy = Color(0xFF00084D);
@@ -36,46 +39,28 @@ class QuizInstructionScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              quizTitle.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 22, 
-                fontWeight: FontWeight.bold, 
-                color: darkNavy, 
-                fontFamily: 'serif'
-              ),
-            ),
+            Text(quizTitle.toUpperCase(),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy, fontFamily: 'serif')),
             const SizedBox(height: 10),
             const Text("Instructions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            const Text(
-              "Read carefully. You cannot pause the timer once you begin.",
-              style: TextStyle(fontSize: 13, color: Colors.black54),
-            ),
+            const Text("Read carefully. You cannot pause the timer once you begin the session.",
+              style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.5)),
             const SizedBox(height: 30),
-            
             _buildStatItem(Icons.help_outline, "Questions", "$questions Items"),
             _buildStatItem(Icons.stars_rounded, "Total Points", "$points Points"),
-            _buildStatItem(Icons.timer_outlined, "Time Limit", 
-              duration == "1800" ? "30 Minutes" : "$duration Seconds"),
-            
+            _buildStatItem(Icons.timer_outlined, "Time Limit", duration == "1800" ? "30 Minutes" : "$duration Seconds"),
             const Spacer(),
-            
-            Center(
-              child: SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                  onPressed: () => _handleStart(context),
-                  child: const Text(
-                    "START ASSESSMENT",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: darkNavy,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
+                onPressed: () => _handleStart(context),
+                child: const Text("I UNDERSTAND, START", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 40),
@@ -85,21 +70,24 @@ class QuizInstructionScreen extends StatelessWidget {
     );
   }
 
-  // --- FIXED: Removed the logic for Crossword and Identification ---
   void _handleStart(BuildContext context) {
     Widget page;
-
-    // We now only check for Multiple Choice (Quiz) or default to True/False
-    if (quizTitle.toLowerCase().contains("quiz")) {
-      page = MultipleChoiceQuizScreen(quizTitle: quizTitle);
-    } else {
-      page = TrueFalseQuizScreen(quizTitle: quizTitle);
+    switch (quizType) {
+      case 'crossword':
+        // FIX: Added parentheses () to call the class
+        page = CrosswordAssessment(); 
+        break;
+      case 'identification':
+        // FIX: Added parentheses () and passed the required title
+        page = IdentificationQuizScreen(quizTitle: quizTitle);
+        break;
+      case 'true_false':
+        page = TrueFalseQuizScreen(quizTitle: quizTitle);
+        break;
+      default:
+        page = MultipleChoiceQuizScreen(quizTitle: quizTitle);
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
   }
 
   Widget _buildStatItem(IconData icon, String label, String value) {

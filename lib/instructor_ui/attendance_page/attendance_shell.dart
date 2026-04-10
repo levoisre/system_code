@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; 
 import '../notification_page/notification.dart'; 
-import '../sidebar.dart'; 
 import 'attendance_request.dart'; 
 
 class InstructorAttendanceHistory extends StatefulWidget {
@@ -19,6 +18,7 @@ class InstructorAttendanceHistory extends StatefulWidget {
 }
 
 class _InstructorAttendanceHistoryState extends State<InstructorAttendanceHistory> {
+  // Branded Palette
   static const Color stiNavy = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF8FAFC);
   static const Color tableHeaderColor = Color(0xFFF1F5F9);
@@ -62,7 +62,6 @@ class _InstructorAttendanceHistoryState extends State<InstructorAttendanceHistor
     });
   }
 
-  // --- ADDED: EXPORT LOGIC ---
   void _handleExport() {
     showDialog(
       context: context,
@@ -71,7 +70,7 @@ class _InstructorAttendanceHistoryState extends State<InstructorAttendanceHistor
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           content: FutureBuilder(
-            future: Future.delayed(const Duration(milliseconds: 2000)), // Simulate file generation
+            future: Future.delayed(const Duration(milliseconds: 2000)), 
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Column(
@@ -120,26 +119,14 @@ class _InstructorAttendanceHistoryState extends State<InstructorAttendanceHistor
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Row(
-        children: [
-          InstructorSidebar(
-            currentPage: "Attendance",
-            onPageChanged: (index) => Navigator.pop(context),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildStandardHeader("${widget.subjectCode} Attendance Logs"),
-                _buildFilterHeader(),
-                _buildActionRow(),
-                Expanded(child: _buildTableCard()),
-              ],
-            ),
-          ),
-        ],
-      ),
+    // Return Column only. The Scaffold and Sidebar are provided by InstructorIndex.
+    return Column(
+      children: [
+        _buildStandardHeader("${widget.subjectCode} Attendance Logs"),
+        _buildFilterHeader(),
+        _buildActionRow(),
+        Expanded(child: _buildTableCard()),
+      ],
     );
   }
 
@@ -242,7 +229,6 @@ class _InstructorAttendanceHistoryState extends State<InstructorAttendanceHistor
         if (label == "VIEW REQUESTS") {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceRequestsPage()));
         } else {
-          // FIXED: Calls the handleExport function
           _handleExport();
         }
       },

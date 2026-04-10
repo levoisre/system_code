@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+
+// --- UPDATED IMPORTS ---
+// Replaces InstructorIndex with the Course List (Manage Subject) page
 import '../course_page/course_list.dart'; 
+
+// Corrected relative path to reach the student login page
+import '../../student_ui/login_page/login.dart'; 
 
 class InstructorLoginPage extends StatefulWidget {
   const InstructorLoginPage({super.key});
@@ -12,10 +18,17 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Track password visibility state
-  bool _isObscured = true;
+  // Manage password visibility state
+  bool _isPasswordObscured = true;
 
   static const Color darkNavy = Color(0xFF0C1446); 
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,12 +69,12 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0x1A000000)),
-                  boxShadow: const [
+                  border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x0D000000),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 15,
-                      offset: Offset(0, 5),
+                      offset: const Offset(0, 5),
                     )
                   ],
                 ),
@@ -79,7 +92,7 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
                     ),
                     const SizedBox(height: 45),
 
-                    // INPUT FIELDS
+                    // EMAIL FIELD
                     _buildLoginInput(
                       controller: _emailController,
                       hint: 'School Email Address',
@@ -87,6 +100,7 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
                     ),
                     const SizedBox(height: 20),
 
+                    // PASSWORD FIELD
                     _buildLoginInput(
                       controller: _passwordController,
                       hint: 'Access Password',
@@ -101,12 +115,11 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          await Future.delayed(const Duration(milliseconds: 200));
-                          if (!mounted) return;
-
-                          navigator.pushReplacement(
+                        onPressed: () {
+                          // FIXED: Navigate to Course Selection instead of Dashboard
+                          // This allows the professor to choose a subject first.
+                          Navigator.pushReplacement(
+                            context,
                             MaterialPageRoute(builder: (context) => const InstructorCourseList()),
                           );
                         },
@@ -133,13 +146,18 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
             ),
             const SizedBox(height: 40),
             
-            // Switch to Student Portal Action
+            // Switch to Student Portal
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
               child: OutlinedButton(
-                onPressed: () => Navigator.pop(context), 
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  );
+                }, 
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0x1F000000)),
+                  side: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
                   shape: const StadiumBorder(),
                 ),
                 child: const Text(
@@ -165,30 +183,28 @@ class _InstructorLoginPageState extends State<InstructorLoginPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F9),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x1A000000)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
       ),
       child: TextField(
         controller: controller,
-        // Uses the state variable if it's a password field
-        obscureText: isPassword ? _isObscured : false,
+        obscureText: isPassword ? _isPasswordObscured : false,
         style: const TextStyle(fontFamily: 'serif'),
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: darkNavy),
-          // Added the Eye Symbol logic here
           suffixIcon: isPassword 
             ? IconButton(
                 icon: Icon(
-                  _isObscured ? Icons.visibility_off : Icons.visibility,
+                  _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
                   color: Colors.black26,
                   size: 20,
                 ),
                 onPressed: () {
                   setState(() {
-                    _isObscured = !_isObscured;
+                    _isPasswordObscured = !_isPasswordObscured;
                   });
                 },
-              ) 
+              )
             : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),

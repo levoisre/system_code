@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import '../notification_page/notification.dart';
+
+// --- THEME CONSTANTS ---
+const Color darkNavy = Color(0xFF0C1446);
+const Color stiGold = Color(0xFFFFD100);
+const Color accentBlue = Color(0xFF4A90E2);
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
@@ -10,33 +15,44 @@ class StudentHome extends StatefulWidget {
   State<StudentHome> createState() => _StudentHomeState();
 }
 
-class _StudentHomeState extends State<StudentHome> {
+class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStateMixin {
+  // --- SUBJECT DATA ---
+  final String subjectName = "MOBILE APPLICATION DEVELOPMENT"; 
+
   // --- STATE CONTROL ---
   bool isClockedIn = false;      
   bool isSessionFinished = false; 
   bool showVerification = false; 
-  bool isScanning = false;      
+  bool isScanning = false;       
   bool showSuccess = false;      
+  bool showFinalSummary = false; 
 
-  // --- TIME DATA ---
-  String _currentTime = ""; // The live working clock
+  // --- TIME & DATA ---
+  String _currentTime = ""; 
   String clockInTime = "--:-- --";
   String clockOutTime = "--:-- --";
   String totalElapsed = "00:00:00"; 
+  double proximityDistance = 1.2; 
   
   DateTime? _startTime;
-  Timer? _liveClockTimer; // Timer for the real-time clock
-  Timer? _durationTimer;  // Timer for the elapsed duration
-
-  static const Color darkNavy = Color(0xFF0C1446); 
+  Timer? _liveClockTimer; 
+  Timer? _durationTimer;  
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    _updateTime(); // Set initial time
-    // 1. START THE WORKING CLOCK (Updates every second)
-    _liveClockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _updateTime();
+    _updateTime(); 
+    _liveClockTimer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    // Trigger verification dialog on entry
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() => showVerification = true);
     });
   }
 
@@ -47,11 +63,8 @@ class _StudentHomeState extends State<StudentHome> {
     });
   }
 
-  // --- HELPER: Logic for the Top Clock Display ---
   String _getDisplayTime() {
-    // If they just finished, show the exact time they clocked out
     if (isSessionFinished && !isClockedIn) return clockOutTime.split(' ')[0]; 
-    // Otherwise, show the live working clock
     return _currentTime;
   }
 
@@ -61,7 +74,13 @@ class _StudentHomeState extends State<StudentHome> {
         final duration = DateTime.now().difference(_startTime!);
         setState(() {
           totalElapsed = _formatDuration(duration);
+          // Only simulate proximity movement once connected
+          if (proximityDistance < 2.5) proximityDistance += 0.01;
         });
+
+        if (duration.inSeconds >= 3600) { 
+          _autoClockOut();
+        }
       }
     });
   }
@@ -71,24 +90,26 @@ class _StudentHomeState extends State<StudentHome> {
     return "${twoDigits(d.inHours)}:${twoDigits(d.inMinutes.remainder(60))}:${twoDigits(d.inSeconds.remainder(60))}";
   }
 
-  void _handleAttendance() {
+  void _autoClockIn() {
     final now = DateTime.now();
-    final String formattedTime = DateFormat('hh:mm a').format(now);
-
     setState(() {
-      if (!isClockedIn) {
-        clockInTime = formattedTime;
-        _startTime = now;
-        isClockedIn = true;
-        isSessionFinished = false;
-        _startDurationTimer();
-      } else {
-        clockOutTime = formattedTime;
-        isClockedIn = false;
-        isSessionFinished = true;
-        _durationTimer?.cancel(); 
-      }
+      clockInTime = DateFormat('hh:mm a').format(now);
+      _startTime = now;
+      isClockedIn = true;
+      isSessionFinished = false;
       showSuccess = true; 
+    });
+    _startDurationTimer();
+  }
+
+  void _autoClockOut() {
+    if (!isClockedIn) return;
+    setState(() {
+      clockOutTime = DateFormat('hh:mm a').format(DateTime.now());
+      isClockedIn = false;
+      isSessionFinished = true;
+      showFinalSummary = true; 
+      _durationTimer?.cancel();
     });
   }
 
@@ -97,7 +118,7 @@ class _StudentHomeState extends State<StudentHome> {
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() { isScanning = false; });
-        _handleAttendance();
+        _autoClockIn(); 
       }
     });
   }
@@ -106,32 +127,60 @@ class _StudentHomeState extends State<StudentHome> {
   void dispose() {
     _liveClockTimer?.cancel();
     _durationTimer?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8E8E8),
+      backgroundColor: const Color(0xFFF1F4FF),
       appBar: AppBar(
-        backgroundColor: darkNavy,
-        elevation: 0,
+        backgroundColor: const Color(0xFF000040), 
+        elevation: 4,
         automaticallyImplyLeading: false,
-        title: const Text('Data Structures & Algorithms', 
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+        title: Text(
+          subjectName.toUpperCase(), 
+          style: const TextStyle(
+            color: Colors.white, 
+            fontSize: 15, 
+            fontWeight: FontWeight.w900, 
+            fontFamily: 'serif',
+            letterSpacing: 1.2
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications, color: Colors.white), 
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()))
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Stack(
         children: [
           _buildDashboard(),
-          if (showVerification) _buildOverlay(child: _buildVerificationCard()),
-          if (isScanning) _buildOverlay(backgroundColor: Colors.black.withAlpha(220), child: _buildScanningUI()),
-          if (showSuccess) _buildOverlay(backgroundColor: const Color(0xFF4C5771).withAlpha(180), child: _buildSuccessCard()),
+          
+          if (showVerification) 
+            _buildOverlay(child: _buildVerificationCard()),
+          
+          if (isScanning) 
+            _buildOverlay(
+              backgroundColor: Colors.black.withValues(alpha: 0.85), 
+              child: _buildScanningUI()
+            ),
+          
+          if (showSuccess) 
+            _buildOverlay(
+              backgroundColor: darkNavy.withValues(alpha: 0.8), 
+              child: _buildSuccessCard()
+            ),
+          
+          if (showFinalSummary) 
+            _buildOverlay(
+              backgroundColor: Colors.black.withValues(alpha: 0.9), 
+              child: _buildFinalSummaryCard()
+            ),
         ],
       ),
     );
@@ -142,35 +191,89 @@ class _StudentHomeState extends State<StudentHome> {
       child: Column(
         children: [
           const SizedBox(height: 30),
-          // --- LIVE WORKING CLOCK ---
-          Text(
-            _getDisplayTime(), 
-            style: const TextStyle(fontSize: 90, fontWeight: FontWeight.w900, fontFamily: 'serif')
-          ),
-          Text(
-            DateFormat('EEEE | MMMM d, y').format(DateTime.now()), 
-            style: const TextStyle(fontSize: 18, fontFamily: 'serif')
-          ),
-          
+          Text(_getDisplayTime(), 
+              style: const TextStyle(fontSize: 90, fontWeight: FontWeight.w900, fontFamily: 'serif', color: darkNavy)),
+          Text(DateFormat('EEEE, MMMM d, y').format(DateTime.now()), 
+              style: const TextStyle(fontSize: 16, color: Colors.black54)),
           const SizedBox(height: 40),
-          const Center(child: Icon(Icons.account_circle, size: 200, color: Colors.black12)),
-          
-          const SizedBox(height: 40),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 50),
-            child: ElevatedButton(
-              onPressed: () => setState(() => showVerification = true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: darkNavy, foregroundColor: Colors.white, 
-                minimumSize: const Size(double.infinity, 50), shape: const StadiumBorder()
-              ),
-              child: Text(isClockedIn ? 'CLOCK OUT' : 'CLOCK IN', 
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ScaleTransition(
+                  scale: Tween(begin: 1.0, end: 1.2).animate(_pulseController),
+                  child: Container(
+                    width: 180, height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: (isClockedIn ? Colors.green : accentBlue).withValues(alpha: 0.1),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 160, height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 5)
+                    ],
+                    border: Border.all(
+                      color: isClockedIn ? Colors.green : Colors.black.withValues(alpha: 0.05),
+                      width: 4,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isClockedIn ? Icons.settings_input_antenna_rounded : Icons.face_retouching_natural_rounded,
+                      size: 80,
+                      color: isClockedIn ? Colors.green : darkNavy.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                if (isClockedIn)
+                  Positioned(
+                    bottom: 10, right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                      child: const Icon(Icons.check, color: Colors.white, size: 20),
+                    ),
+                  ),
+              ],
             ),
           ),
-          
+
           const SizedBox(height: 30),
+          _buildProximityIndicator(),
+          const SizedBox(height: 40),
           _buildStatsCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProximityIndicator() {
+    // Only shows connected if Clocked In (Verification successful)
+    bool isConnected = isClockedIn;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 50),
+      decoration: BoxDecoration(
+        color: isConnected ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: isConnected ? Colors.green : Colors.red, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded, color: isConnected ? Colors.green : Colors.red, size: 18),
+          const SizedBox(width: 10),
+          Text(
+            isConnected ? "Hub Connected" : "Connection Lost",
+            style: TextStyle(fontWeight: FontWeight.bold, color: isConnected ? Colors.green : Colors.red),
+          ),
         ],
       ),
     );
@@ -178,40 +281,22 @@ class _StudentHomeState extends State<StudentHome> {
 
   Widget _buildStatsCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20), padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.black87)),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-        _StatCol(icon: Icons.south_west, time: clockInTime, label: 'In'),
-        _StatCol(icon: Icons.north_east, time: clockOutTime, label: 'Out'),
-        _StatCol(icon: Icons.timer_outlined, time: totalElapsed, label: 'Total Hours'),
-      ]),
-    );
-  }
-
-  // Popups (Verification & Success) match your photos
-  Widget _buildSuccessCard() {
-    return Center(
-      child: Container(
-        width: 310, padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 25),
-        decoration: BoxDecoration(
-          color: const Color(0xFFDDE4F3), borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.black, width: 1.2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('ATTENDANCE\nMARKED!', textAlign: TextAlign.center, 
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'serif', height: 1.2)),
-            const SizedBox(height: 20),
-            Text('Time in for ${isSessionFinished ? clockOutTime : clockInTime}\nhas been marked!', 
-                textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontFamily: 'serif')),
-            const SizedBox(height: 35),
-            GestureDetector(
-              onTap: () => setState(() => showSuccess = false),
-              child: const Text('CLOSE', style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-          ],
-        ),
+      margin: const EdgeInsets.symmetric(horizontal: 20), 
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(25), 
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+        children: [
+          _StatCol(icon: Icons.login, time: clockInTime, label: 'Clock In'),
+          Container(height: 40, width: 1, color: Colors.black.withValues(alpha: 0.05)),
+          _StatCol(icon: Icons.hourglass_bottom, time: totalElapsed, label: 'Elapsed'),
+          Container(height: 40, width: 1, color: Colors.black.withValues(alpha: 0.05)),
+          _StatCol(icon: Icons.logout, time: clockOutTime, label: 'Clock Out'),
+        ]
       ),
     );
   }
@@ -224,21 +309,39 @@ class _StudentHomeState extends State<StudentHome> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Align(alignment: Alignment.topLeft, child: GestureDetector(onTap: () => setState(() => showVerification = false), child: const Icon(Icons.close, color: Colors.white, size: 20))),
-            const Text('Facial Verification Required', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'serif')),
-            const SizedBox(height: 15),
-            const Text('To ensure secure and accurate attendance, the system will verify your identity through facial recognition.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
+            const Icon(Icons.face_unlock_rounded, color: Colors.white, size: 50),
             const SizedBox(height: 20),
-            _bullet('Your camera will be used for a quick face scan.'),
-            _bullet('Data is used only for attendance verification.'),
-            _bullet('If verification fails, you may retry or request assistance.'),
+            const Text('Verify Attendance', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+            const SizedBox(height: 15),
+            
+            // "Hub not yet connected" visible BEFORE scanning
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5))
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
+                  SizedBox(width: 8),
+                  Text('Hub not yet connected', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 15),
+            const Text('The system will establish a connection to the Smart Classroom Hub once your identity is verified.', 
+                textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 30),
             SizedBox(
-              width: double.infinity, height: 48,
+              width: double.infinity, height: 50,
               child: ElevatedButton(
-                onPressed: _startScanningProcess,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE8E8E8), foregroundColor: Colors.black, shape: const StadiumBorder()),
-                child: const Text('START VERIFICATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                onPressed: _startScanningProcess, 
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: darkNavy, shape: const StadiumBorder()),
+                child: const Text('START SCAN', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -247,16 +350,93 @@ class _StudentHomeState extends State<StudentHome> {
     );
   }
 
-  Widget _bullet(String text) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• ', style: TextStyle(color: Colors.white)), Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.3)))]));
-  Widget _buildOverlay({required Widget child, Color? backgroundColor}) => Container(color: backgroundColor ?? Colors.black.withAlpha(100), width: double.infinity, height: double.infinity, child: child);
-  Widget _buildScanningUI() => const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.face, size: 80, color: Colors.white), SizedBox(height: 20), Text('Scanning...', style: TextStyle(color: Colors.white, fontSize: 18))]);
+  Widget _buildScanningUI() => Column(
+    mainAxisAlignment: MainAxisAlignment.center, 
+    children: [
+      const CircularProgressIndicator(color: Colors.white), 
+      const SizedBox(height: 20), 
+      Text('Establishing Hub Connection...', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16)),
+      const SizedBox(height: 8),
+      const Text('Verifying Identity...', style: TextStyle(color: Colors.white54, fontSize: 12)),
+    ]
+  );
+
+  Widget _buildSuccessCard() {
+    return Center(
+      child: Container(
+        width: 310, padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 25),
+        decoration: BoxDecoration(color: const Color(0xFFF1F4FF), borderRadius: BorderRadius.circular(25)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 70),
+            const SizedBox(height: 20),
+            const Text('IDENTIFIED', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'serif', color: darkNavy)),
+            const SizedBox(height: 10),
+            // Confirmation that Hub is now connected
+            Text('Face recognized. Hub connected.\nSession started at: $clockInTime', textAlign: TextAlign.center),
+            const SizedBox(height: 35),
+            GestureDetector(
+              onTap: () => setState(() => showSuccess = false),
+              child: const Text('PROCEED', style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinalSummaryCard() {
+    return Center(
+      child: Container(
+        width: 320, padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.notification_important, color: Colors.orange, size: 60),
+            const SizedBox(height: 20),
+            const Text('SESSION ENDED', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'serif', color: darkNavy)),
+            const SizedBox(height: 10),
+            const Text('The instructor has ended the class session. You have been clocked out.', textAlign: TextAlign.center),
+            const Divider(height: 40),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text("Duration:"),
+              Text(totalElapsed, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => setState(() => showFinalSummary = false),
+              style: ElevatedButton.styleFrom(backgroundColor: darkNavy, shape: const StadiumBorder()),
+              child: const Text("RETURN TO DASHBOARD", style: TextStyle(color: Colors.white)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlay({required Widget child, Color? backgroundColor}) => 
+      Container(
+        color: backgroundColor ?? Colors.black.withValues(alpha: 0.6), 
+        width: double.infinity, height: double.infinity, 
+        child: child
+      );
 }
 
 class _StatCol extends StatelessWidget {
   final IconData icon; final String time; final String label;
   const _StatCol({required this.icon, required this.time, required this.label});
+  
   @override
   Widget build(BuildContext context) {
-    return Column(children: [Icon(icon, size: 20, color: Colors.black54), const SizedBox(height: 4), Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54))]);
+    return Column(
+      children: [
+        Icon(icon, size: 24, color: darkNavy), 
+        const SizedBox(height: 8), 
+        Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: darkNavy)), 
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38))
+      ]
+    );
   }
 }

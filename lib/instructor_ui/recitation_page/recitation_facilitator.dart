@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import '../sidebar.dart'; 
 import '../notification_page/notification.dart';
 
 class RecitationFacilitatorPage extends StatefulWidget {
-  // --- ADDED: Parameters to receive the current subject state ---
   final String subjectCode;
   final String subjectName;
 
@@ -19,19 +17,17 @@ class RecitationFacilitatorPage extends StatefulWidget {
 }
 
 class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
-  // --- BRANDED COLORS ---
+  // Branded Colors
   static const Color stiNavy = Color(0xFF000080);
   static const Color stiGold = Color(0xFFFFC72C);
   static const Color bgColor = Color(0xFFF8FAFC);
 
-  // --- UPDATED: Subject-Specific Rosters ---
+  // Subject-Specific Rosters
   final Map<String, List<String>> _subjectRosters = {
     "CPE 401": ["Alex Johnson", "Maria Garcia", "Tony Hugh", "Jet Hinks", "Samuel Pru"],
-    "ITE 302": ["Andrea Sy", "Pacita Labrusco", "Kevin Lee", "Cynthia Villar", "Robert Fox"],
-    "CS 101": ["John Doe", "Jane Smith", "Alice Wonder", "Bob Builder"],
+    "AI 302": ["Andrea Sy", "Pacita Labrusco", "Kevin Lee", "Cynthia Villar", "Robert Fox"],
   };
 
-  // Helper to get the current list based on selected subject
   List<String> get _currentStudents => _subjectRosters[widget.subjectCode] ?? [];
 
   final Map<String, int> _sessionGrades = {};
@@ -64,7 +60,6 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
     }
   }
 
-  // --- DETAILED GRADING POP-UP ---
   void _showGradingDialog(String studentName) {
     int selectedStars = _sessionGrades[studentName] ?? 0;
     final TextEditingController commentController = TextEditingController();
@@ -102,7 +97,6 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
                     const Divider(height: 40),
                     const Text("Assign Points", style: TextStyle(fontWeight: FontWeight.bold, color: stiNavy)),
                     const SizedBox(height: 12),
-                    
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(5, (index) {
@@ -187,33 +181,23 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Row(
+    // FIXED: Wrapped in Material to fix text styling errors (Red/Underlined text)
+    return Material(
+      color: bgColor,
+      child: Column(
         children: [
-          // --- FIXED: Sidebar call with callback ---
-          InstructorSidebar(
-            currentPage: "Recitation",
-            onPageChanged: (index) => Navigator.pop(context),
-          ),
+          _buildStandardHeader("${widget.subjectCode} Recitation"),
           Expanded(
-            child: Column(
-              children: [
-                _buildStandardHeader("${widget.subjectCode} Recitation"),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 3, child: _buildSpotlightSection()),
-                        const SizedBox(width: 32),
-                        Expanded(flex: 2, child: _buildRosterPanel()),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildSpotlightSection()),
+                  const SizedBox(width: 32),
+                  Expanded(flex: 2, child: _buildRosterPanel()),
+                ],
+              ),
             ),
           ),
         ],
@@ -350,7 +334,8 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
                         child: Text("${i + 1}", style: const TextStyle(fontSize: 10, color: Colors.white)),
                       ),
                       const SizedBox(width: 12),
-                      Text(name, style: TextStyle(fontWeight: isPicked ? FontWeight.bold : FontWeight.normal)),
+                      // Text color added specifically to student name to ensure visibility
+                      Text(name, style: TextStyle(fontWeight: isPicked ? FontWeight.bold : FontWeight.normal, color: isPicked ? stiNavy : Colors.black87)),
                       const Spacer(),
                       if (hasGrade) 
                         Container(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'new_course.dart';
 import 'edit_course.dart';
-import '../home_page/dashboard.dart'; // Points to your updated InstructorDashboard
+import '../instructor_index.dart'; // Routes to the shell instead of just the dashboard
 
 class InstructorCourseList extends StatefulWidget {
   const InstructorCourseList({super.key});
@@ -15,10 +15,9 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
   static const Color bgColor = Color(0xFFF0F2F5);
   static const Color cardBorder = Color(0xFFD1D9E6);
 
-  // --- MASTER DATA ---
   final List<Map<String, dynamic>> _allCourses = [
     {
-      "title": "Data Structures",
+      "title": "DATA STRUCTURES",
       "sched": "MonWed 7:30 AM - 9:30 AM",
       "code": "CPE 401", 
       "room": "Lab 402",
@@ -28,7 +27,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
       "students": ["Amigo, Raphael", "Brusco, Hannah", "Fabrino, Valerie", "Dela Cruz, Juan"]
     },
     {
-      "title": "Artificial Intelligence",
+      "title": "ARTIFICIAL INTELLIGENCE",
       "sched": "TueThu 10:00 AM - 12:00 PM",
       "code": "AI 302",
       "room": "Room 305",
@@ -59,6 +58,45 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
         return matchesSearch && matchesCategory;
       }).toList();
     });
+  }
+
+  // --- FUNCTIONAL: HANDLES EDIT AND DELETE RESULTS ---
+  Future<void> _handleEditCourse(Map<String, dynamic> course) async {
+    final result = await Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (context) => EditCoursePage(courseData: course))
+    );
+
+    if (!mounted) return;
+
+    if (result == "DELETE") {
+      setState(() {
+        // Remove from the master list
+        _allCourses.removeWhere((item) => item['code'] == course['code']);
+        // Refresh the visible filtered list
+        _applyFilters();
+      });
+      _showSnack("Subject removed from records.");
+    } else if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        int index = _allCourses.indexWhere((item) => item['code'] == course['code']);
+        if (index != -1) {
+          _allCourses[index] = result;
+          _applyFilters();
+        }
+      });
+      _showSnack("Changes saved successfully.");
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: darkNavy,
+        behavior: SnackBarBehavior.floating,
+        content: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
+    );
   }
 
   @override
@@ -132,8 +170,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                 final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const NewCoursePage()));
                 if (result != null && result is Map<String, dynamic>) {
                   setState(() {
-                    result['students'] = result['students'] ?? [];
-                    _allCourses.add(result);
+                    _allCourses.insert(0, result);
                     _applyFilters();
                   });
                 }
@@ -173,7 +210,13 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cardBorder, width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +232,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                   children: [
                     Expanded(child: Text(course['title'] ?? "Untitled", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => EditCoursePage(courseData: course))),
+                      onTap: () => _handleEditCourse(course),
                       child: const Icon(Icons.edit_note_rounded, color: darkNavy, size: 20),
                     ),
                   ],
@@ -201,18 +244,16 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                 Text(course['desc'] ?? "", style: const TextStyle(fontSize: 9, color: Colors.black45), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 12),
                 
-                // --- FIXED: Navigates using InstructorDashboard with all required arguments ---
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => InstructorDashboard(
-                            subjectCode: course['code'] ?? "N/A",
-                            subjectName: course['title'] ?? "N/A",
-                            courseData: course, // Passes the full map including students
+                          builder: (context) => InstructorIndex(
+                            selectedSubjectCode: course['code'] ?? "N/A",
+                            selectedSubjectName: course['title'] ?? "N/A",
                           ),
                         ),
                       );
