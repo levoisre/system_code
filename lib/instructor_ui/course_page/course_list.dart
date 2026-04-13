@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'new_course.dart';
 import 'edit_course.dart';
-import '../instructor_index.dart'; // Routes to the shell instead of just the dashboard
+import '../instructor_index.dart';
 
 class InstructorCourseList extends StatefulWidget {
   const InstructorCourseList({super.key});
@@ -60,7 +60,6 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
     });
   }
 
-  // --- FUNCTIONAL: HANDLES EDIT AND DELETE RESULTS ---
   Future<void> _handleEditCourse(Map<String, dynamic> course) async {
     final result = await Navigator.push(
       context, 
@@ -71,9 +70,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
 
     if (result == "DELETE") {
       setState(() {
-        // Remove from the master list
         _allCourses.removeWhere((item) => item['code'] == course['code']);
-        // Refresh the visible filtered list
         _applyFilters();
       });
       _showSnack("Subject removed from records.");
@@ -110,30 +107,36 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
           style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          _buildTopActionArea(),
-          Expanded(
-            child: _filteredCourses.isNotEmpty
-                ? GridView.builder(
-                    padding: const EdgeInsets.all(20),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 18,
-                      mainAxisSpacing: 18,
-                      childAspectRatio: 0.95, 
-                    ),
-                    itemCount: _filteredCourses.length,
-                    itemBuilder: (context, index) => _courseCard(context, _filteredCourses[index]),
-                  )
-                : const Center(child: Text("No courses found.", style: TextStyle(color: Colors.black45))),
-          ),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isMobile = constraints.maxWidth < 600;
+          
+          return Column(
+            children: [
+              _buildTopActionArea(isMobile),
+              Expanded(
+                child: _filteredCourses.isNotEmpty
+                    ? GridView.builder(
+                        padding: EdgeInsets.all(isMobile ? 15 : 20),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isMobile ? 1 : 2,
+                          crossAxisSpacing: 18,
+                          mainAxisSpacing: 18,
+                          childAspectRatio: isMobile ? 1.8 : 1.1, 
+                        ),
+                        itemCount: _filteredCourses.length,
+                        itemBuilder: (context, index) => _courseCard(context, _filteredCourses[index], isMobile),
+                      )
+                    : const Center(child: Text("No courses found.", style: TextStyle(color: Colors.black45))),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _buildTopActionArea() {
+  Widget _buildTopActionArea(bool isMobile) {
     return Container(
       padding: const EdgeInsets.all(20),
       color: Colors.white,
@@ -149,7 +152,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
                     controller: _searchController,
                     onChanged: (v) => _applyFilters(),
                     decoration: const InputDecoration(
-                      hintText: "Search course name...",
+                      hintText: "Search course...",
                       prefixIcon: Icon(Icons.search, color: darkNavy, size: 20),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(vertical: 10),
@@ -204,7 +207,7 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
     );
   }
 
-  Widget _courseCard(BuildContext context, Map<String, dynamic> course) {
+  Widget _courseCard(BuildContext context, Map<String, dynamic> course, bool isMobile) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -222,52 +225,54 @@ class _InstructorCourseListState extends State<InstructorCourseList> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(height: 6, decoration: BoxDecoration(color: course['color'] ?? darkNavy, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)))),
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(course['title'] ?? "Untitled", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    GestureDetector(
-                      onTap: () => _handleEditCourse(course),
-                      child: const Icon(Icons.edit_note_rounded, color: darkNavy, size: 20),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _cardDetailRow(Icons.tag_rounded, course['code'] ?? "N/A"),
-                _cardDetailRow(Icons.schedule_rounded, course['sched'] ?? "N/A"),
-                const SizedBox(height: 8),
-                Text(course['desc'] ?? "", style: const TextStyle(fontSize: 9, color: Colors.black45), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 12),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InstructorIndex(
-                            selectedSubjectCode: course['code'] ?? "N/A",
-                            selectedSubjectName: course['title'] ?? "N/A",
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkNavy,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 0,
-                    ),
-                    child: const Text("MANAGE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: Text(course['title'] ?? "Untitled", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: darkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      GestureDetector(
+                        onTap: () => _handleEditCourse(course),
+                        child: const Icon(Icons.edit_note_rounded, color: darkNavy, size: 20),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  _cardDetailRow(Icons.tag_rounded, course['code'] ?? "N/A"),
+                  _cardDetailRow(Icons.schedule_rounded, course['sched'] ?? "N/A"),
+                  const SizedBox(height: 4),
+                  if(!isMobile) // Hide description on small mobile aspect ratios if needed, or keep for list view
+                  Text(course['desc'] ?? "", style: const TextStyle(fontSize: 9, color: Colors.black45), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => InstructorIndex(
+                              selectedSubjectCode: course['code'] ?? "N/A",
+                              selectedSubjectName: course['title'] ?? "N/A",
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: darkNavy,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        elevation: 0,
+                      ),
+                      child: const Text("MANAGE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

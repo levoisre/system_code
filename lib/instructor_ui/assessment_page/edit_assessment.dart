@@ -16,8 +16,6 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
   final List<Map<String, dynamic>> _questions = [];
   final List<TextEditingController> _questionControllers = [];
   final List<TextEditingController> _answerControllers = [];
-  
-  // ADDED: List to hold multiple choice option controllers
   final List<List<TextEditingController>> _optionControllers = [];
 
   static const Color stiNavy = Color(0xFF0D125A);
@@ -34,8 +32,6 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.quizData['title']);
-    
-    // Sanitize duration for display
     String duration = widget.quizData['duration'].toString().replaceAll(" min", "");
     _durationController = TextEditingController(text: duration);
 
@@ -50,11 +46,8 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
         "text": q['text'] ?? "",
         "answer": q['answer'] ?? "",
       });
-      
       _questionControllers.add(TextEditingController(text: q['text']));
       _answerControllers.add(TextEditingController(text: q['answer']));
-
-      // Initialize 4 options for each existing question
       List<dynamic> options = q['options'] ?? ["", "", "", ""];
       _optionControllers.add(List.generate(4, (i) => 
         TextEditingController(text: i < options.length ? options[i].toString() : "")
@@ -89,7 +82,6 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
       _questionControllers[index].dispose();
       _answerControllers[index].dispose();
       for (var c in _optionControllers[index]) { c.dispose(); }
-      
       _questionControllers.removeAt(index);
       _answerControllers.removeAt(index);
       _optionControllers.removeAt(index);
@@ -137,7 +129,6 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
       widget.quizData['duration'] = "${_durationController.text} min";
       widget.quizData['questions'] = _questions.length.toString();
       widget.quizData['points'] = (_questions.length * 5).toString();
-      
       widget.quizData['fullQuestionData'] = List.generate(_questions.length, (i) => {
         "type": _questions[i]['type'],
         "text": _questionControllers[i].text,
@@ -165,57 +156,80 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
         title: const Text("EDIT ASSESSMENT", style: TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 16, fontFamily: 'serif')),
         actions: [
           Padding(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
             child: ElevatedButton(
               onPressed: _saveAllChanges,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, elevation: 0),
-              child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text("SAVE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader("GENERAL SETTINGS"),
-            _buildSettingsCard(),
-            const SizedBox(height: 30),
-            _buildSectionHeader("QUESTION EDITOR (${_questions.length})"),
-            const SizedBox(height: 15),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _questions.length,
-              itemBuilder: (context, index) => _buildQuestionCard(index),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Breakpoint: Desktop is width > 800
+          bool isDesktop = constraints.maxWidth > 800;
+          double sidePadding = isDesktop ? (constraints.maxWidth - 750) / 2 : 20.0;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader("GENERAL SETTINGS"),
+                _buildSettingsCard(isDesktop),
+                const SizedBox(height: 30),
+                _buildSectionHeader("QUESTION EDITOR (${_questions.length})"),
+                const SizedBox(height: 15),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _questions.length,
+                  itemBuilder: (context, index) => _buildQuestionCard(index, isDesktop),
+                ),
+                const SizedBox(height: 20),
+                _buildAddButton(),
+                const SizedBox(height: 40),
+                _buildDeleteButton(),
+                const SizedBox(height: 40),
+              ],
             ),
-            const SizedBox(height: 20),
-            _buildAddButton(),
-            const SizedBox(height: 60),
-            _buildDeleteButton(),
-            const SizedBox(height: 40),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
-    return Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.1, fontSize: 12));
+    return Padding(
+      padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.1, fontSize: 12)),
+    );
   }
 
-  Widget _buildSettingsCard() {
+  Widget _buildSettingsCard(bool isDesktop) {
     return Container(
       padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
-      child: Column(
-        children: [
-          _editField("Assessment Title", _titleController, Icons.title),
-          const SizedBox(height: 20),
-          _editField("Duration (Mins)", _durationController, Icons.timer_outlined),
-        ],
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(15), 
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
       ),
+      child: isDesktop 
+        ? Row(
+            children: [
+              Expanded(child: _editField("Assessment Title", _titleController, Icons.title)),
+              const SizedBox(width: 20),
+              SizedBox(width: 200, child: _editField("Duration (Mins)", _durationController, Icons.timer_outlined)),
+            ],
+          )
+        : Column(
+            children: [
+              _editField("Assessment Title", _titleController, Icons.title),
+              const SizedBox(height: 20),
+              _editField("Duration (Mins)", _durationController, Icons.timer_outlined),
+            ],
+          ),
     );
   }
 
@@ -232,13 +246,17 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
     );
   }
 
-  Widget _buildQuestionCard(int index) {
+  Widget _buildQuestionCard(int index, bool isDesktop) {
     String selectedType = _questions[index]['type'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black.withValues(alpha: 0.05))),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(12), 
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05))
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -266,39 +284,44 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
           const SizedBox(height: 15),
           TextField(
             controller: _questionControllers[index],
-            maxLines: 2,
+            maxLines: null,
+            minLines: 1,
             decoration: InputDecoration(
-              hintText: selectedType == "Multiplication" ? "Enter equation (e.g. 5 x 5)" : "Enter question text...",
-              border: InputBorder.none
+              hintText: "Enter question text...",
+              hintStyle: const TextStyle(fontSize: 14),
+              filled: true,
+              fillColor: bgColor.withValues(alpha: 0.5),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
             ),
           ),
           const Divider(height: 30),
 
-          // --- CONDITIONAL UI FOR MULTIPLE CHOICE ---
           if (selectedType == "Multiple Choice") ...[
             const Text("OPTIONS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 10),
-            for (int i = 0; i < 4; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: _optionControllers[index][i],
-                  decoration: InputDecoration(
-                    hintText: "Choice ${String.fromCharCode(65 + i)}",
-                    prefixIcon: const Icon(Icons.radio_button_off, size: 16),
-                    filled: true,
-                    fillColor: bgColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+            // Dynamic Grid/Column for Multiple Choice Options
+            isDesktop 
+              ? GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, crossAxisSpacing: 10, mainAxisExtent: 50, mainAxisSpacing: 10,
                   ),
+                  itemCount: 4,
+                  itemBuilder: (context, i) => _buildOptionField(index, i),
+                )
+              : Column(
+                  children: List.generate(4, (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: _buildOptionField(index, i),
+                  )),
                 ),
-              ),
             const SizedBox(height: 10),
           ],
 
-          // --- DYNAMIC CORRECT ANSWER FIELD ---
           if (selectedType == "True or False")
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text("Correct Answer:", style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(width: 15),
@@ -313,10 +336,27 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
               decoration: InputDecoration(
                 hintText: selectedType == "Crossword" ? "Enter keyword" : "Enter correct answer",
                 prefixIcon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
-                border: InputBorder.none,
+                filled: true,
+                fillColor: Colors.green.withValues(alpha: 0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOptionField(int qIndex, int oIndex) {
+    return TextField(
+      controller: _optionControllers[qIndex][oIndex],
+      style: const TextStyle(fontSize: 13),
+      decoration: InputDecoration(
+        hintText: "Choice ${String.fromCharCode(65 + oIndex)}",
+        prefixIcon: const Icon(Icons.radio_button_off, size: 14),
+        filled: true,
+        fillColor: bgColor,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
       ),
     );
   }
@@ -332,25 +372,28 @@ class _EditAssessmentPageState extends State<EditAssessmentPage> {
   }
 
   Widget _buildAddButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _addNewQuestion,
-        icon: const Icon(Icons.add),
-        label: const Text("ADD NEW QUESTION"),
-        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18), side: const BorderSide(color: stiNavy, width: 1.5), foregroundColor: stiNavy, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+    return OutlinedButton.icon(
+      onPressed: _addNewQuestion,
+      icon: const Icon(Icons.add),
+      label: const Text("ADD NEW QUESTION"),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 55),
+        side: const BorderSide(color: stiNavy, width: 1.5),
+        foregroundColor: stiNavy,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
       ),
     );
   }
 
   Widget _buildDeleteButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: TextButton.icon(
-        onPressed: _confirmDelete,
-        icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
-        label: const Text("DELETE THIS ASSESSMENT", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w800)),
-        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20), backgroundColor: Colors.redAccent.withValues(alpha: 0.08), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+    return TextButton.icon(
+      onPressed: _confirmDelete,
+      icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
+      label: const Text("DELETE THIS ASSESSMENT", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w800)),
+      style: TextButton.styleFrom(
+        minimumSize: const Size(double.infinity, 60),
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
       ),
     );
   }

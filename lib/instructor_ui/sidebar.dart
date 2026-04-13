@@ -3,68 +3,76 @@ import 'package:flutter/material.dart';
 class InstructorSidebar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onPageChanged;
+  final bool isMobile;
 
   const InstructorSidebar({
     super.key,
     required this.selectedIndex,
     required this.onPageChanged,
+    this.isMobile = false,
   });
 
-  // STI Official Brand Palette
   static const Color stiNavy = Color(0xFF0D125A);
   static const Color stiYellow = Color(0xFFFFD100);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 100,
+      // On Desktop we use 100, on Mobile Drawer we let it fill the drawer width
+      width: isMobile ? null : 100,
+      height: double.infinity,
       color: stiNavy,
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          // Adaptive top padding
+          SizedBox(height: isMobile ? MediaQuery.of(context).padding.top + 20 : 20),
           
-          // --- SCROLLABLE MAIN NAVIGATION ---
           Expanded(
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  _navItem(Icons.home_outlined, "Home", selectedIndex == 0, 0),
-                  _navItem(Icons.calendar_month_outlined, "Attendance", selectedIndex == 1, 1),
-                  _navItem(Icons.verified_outlined, "Recitation", selectedIndex == 2, 2),
-                  _navItem(Icons.grade_outlined, "Grades", selectedIndex == 3, 3),
-                  _navItem(Icons.quiz_outlined, "Assessments", selectedIndex == 4, 4),
+                  _navItem(Icons.home_outlined, "Home", 0),
+                  _navItem(Icons.calendar_month_outlined, "Attendance", 1),
+                  _navItem(Icons.verified_outlined, "Recitation", 2),
+                  _navItem(Icons.grade_outlined, "Grades", 3),
+                  _navItem(Icons.quiz_outlined, "Assessments", 4),
                 ],
               ),
             ),
           ),
 
-          // --- FIXED PROFILE TAB AT BOTTOM ---
-          _navItem(Icons.account_circle_outlined, "Profiles", selectedIndex == 5, 5),
-          const SizedBox(height: 10),
+          // Divider to separate settings/profile from main navigation
+          Divider(color: Colors.white.withValues(alpha: 0.1), thickness: 1),
+          
+          _navItem(Icons.account_circle_outlined, "Profiles", 5),
+          
+          // Padding for mobile bottom navigation bars (Home Indicator)
+          SizedBox(height: isMobile ? MediaQuery.of(context).padding.bottom + 10 : 10),
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool isSelected, int index) {
+  Widget _navItem(IconData icon, String label, int index) {
+    bool isSelected = selectedIndex == index;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        // ONE-TAP: Notifies the Index shell to swap the view immediately
         onTap: () => onPageChanged(index),
+        splashColor: Colors.white.withValues(alpha: 0.1),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200), // Adds a smooth fade transition
+          duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
           decoration: BoxDecoration(
-            // The Yellow Indicator Line on the left
             border: Border(
               left: BorderSide(
                 color: isSelected ? stiYellow : Colors.transparent,
                 width: 4,
               ),
             ),
-            // Subtle highlight background when active
             color: isSelected 
                 ? Colors.white.withValues(alpha: 0.05) 
                 : Colors.transparent,
@@ -74,18 +82,17 @@ class InstructorSidebar extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: isSelected ? stiYellow : Colors.white70,
-                size: 28,
+                color: isSelected ? stiYellow : Colors.white.withValues(alpha: 0.7),
+                size: 26,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 label.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 8,
-                  color: isSelected ? stiYellow : Colors.white70,
+                  fontSize: 9, // Slightly larger for readability
+                  color: isSelected ? stiYellow : Colors.white.withValues(alpha: 0.7),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontFamily: 'serif',
                   letterSpacing: 0.5,
                 ),
               ),

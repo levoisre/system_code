@@ -20,7 +20,6 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
   bool isTasksSelected = true;
   String _searchQuery = "";
 
-  // Mock data including 'isGiven' status
   final List<Map<String, dynamic>> _allQuizzes = [
     {"title": "QUIZ 3: GRAPH ALGORITHMS", "duration": "15 min", "questions": "20", "points": "40", "due": "03/09/26", "isArchived": false, "isGiven": false},
     {"title": "QUIZ 4: RECURSION", "duration": "30 min", "questions": "15", "points": "25", "due": "03/11/26", "isArchived": false, "isGiven": true},
@@ -36,7 +35,6 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     }).toList();
   }
 
-  /// FUNCTIONALITY: Toggle Give/Ungive Status
   void _toggleQuizStatus(Map<String, dynamic> quiz) {
     setState(() {
       quiz['isGiven'] = !quiz['isGiven'];
@@ -70,10 +68,6 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
         result['isGiven'] = false;
         _allQuizzes.insert(0, result);
       });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("New assessment published!")),
-      );
     }
   }
 
@@ -89,9 +83,6 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
       setState(() {
         _allQuizzes.remove(quiz);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Assessment deleted successfully")),
-      );
     } 
     else if (result != null) {
       setState(() {
@@ -111,42 +102,42 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
 
   @override
   Widget build(BuildContext context) {
-    // CONTENT ONLY: Sidebar and Scaffold are managed by InstructorIndex
+    // Detect Screen Size
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+
     return Material(
       color: const Color(0xFFF1F5F9),
       child: Column(
         children: [
-          _buildHeader(),
-          _buildActionBar(),
+          _buildHeader(isMobile),
+          _buildActionBar(isMobile),
           Expanded(
             child: _filteredQuizzes.isEmpty 
               ? const Center(child: Text("No assessments found.", style: TextStyle(color: Colors.grey)))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(30),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 20,
-                    mainAxisSpacing: 20,
-                    childAspectRatio: 1.5,
-                  ),
-                  itemCount: _filteredQuizzes.length,
-                  itemBuilder: (context, index) => _buildQuizCard(_filteredQuizzes[index]),
-                ),
+              : isMobile 
+                ? _buildListView() 
+                : _buildGridView(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(30),
+      padding: EdgeInsets.all(isMobile ? 20 : 30),
       color: Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text("ASSESSMENT HUB", 
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'serif', color: stiNavy)),
+          Text("ASSESSMENT HUB", 
+            style: TextStyle(
+              fontSize: isMobile ? 18 : 24, 
+              fontWeight: FontWeight.w900, 
+              fontFamily: 'serif', 
+              color: stiNavy
+            )),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, color: stiNavy),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
@@ -156,40 +147,27 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     );
   }
 
-  Widget _buildActionBar() {
+  Widget _buildActionBar(bool isMobile) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 20),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 35, vertical: 20),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: "Search assessments...",
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                ),
+          // Layout Search and Add Button based on screen width
+          isMobile 
+            ? Column(
+                children: [
+                  _buildSearchField(),
+                  const SizedBox(height: 10),
+                  SizedBox(width: double.infinity, child: _buildAddButton()),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: _buildSearchField()),
+                  const SizedBox(width: 15),
+                  _buildAddButton(),
+                ],
               ),
-              const SizedBox(width: 15),
-              ElevatedButton.icon(
-                onPressed: _navigateAndAddAssessment,
-                icon: const Icon(Icons.add),
-                label: const Text("NEW ASSESSMENT"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: stiNavy, 
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 15),
           Row(
             children: [
@@ -200,6 +178,58 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      onChanged: (val) => setState(() => _searchQuery = val),
+      decoration: InputDecoration(
+        hintText: "Search assessments...",
+        prefixIcon: const Icon(Icons.search),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      ),
+    );
+  }
+
+  Widget _buildAddButton() {
+    return ElevatedButton.icon(
+      onPressed: _navigateAndAddAssessment,
+      icon: const Icon(Icons.add),
+      label: const Text("NEW ASSESSMENT"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: stiNavy, 
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildGridView() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(30),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: _filteredQuizzes.length,
+      itemBuilder: (context, index) => _buildQuizCard(_filteredQuizzes[index], false),
+    );
+  }
+
+  Widget _buildListView() {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: _filteredQuizzes.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 15),
+      itemBuilder: (context, index) => _buildQuizCard(_filteredQuizzes[index], true),
     );
   }
 
@@ -215,11 +245,12 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     );
   }
 
-  Widget _buildQuizCard(Map<String, dynamic> quiz) {
+  Widget _buildQuizCard(Map<String, dynamic> quiz, bool isMobile) {
     final bool isGiven = quiz['isGiven'] ?? false;
 
     return Container(
       padding: const EdgeInsets.all(20),
+      constraints: isMobile ? null : const BoxConstraints(minHeight: 180),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -230,6 +261,7 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -249,7 +281,7 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
           ),
           const Divider(),
           _statRow(Icons.timer_outlined, quiz['duration'], Icons.help_outline, "${quiz['questions']} Qs"),
-          const Spacer(),
+          const SizedBox(height: 15),
           _actionBtn(
             isGiven ? "UNGIVE QUIZ" : "GIVE QUIZ", 
             isGiven ? Colors.redAccent : stiNavy, 
@@ -266,7 +298,7 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
         Icon(i1, size: 14, color: Colors.black38),
         const SizedBox(width: 4),
         Text(t1, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-        const Spacer(),
+        const SizedBox(width: 15),
         Icon(i2, size: 14, color: Colors.black38),
         const SizedBox(width: 4),
         Text(t2, style: const TextStyle(fontSize: 11, color: Colors.black54)),

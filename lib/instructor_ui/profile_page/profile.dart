@@ -16,13 +16,11 @@ class InstructorProfilePage extends StatefulWidget {
 }
 
 class _InstructorProfilePageState extends State<InstructorProfilePage> {
-  // STI Color Palette
   static const Color stiNavy = Color(0xFF0D125A);
   static const Color stiGold = Color(0xFFFFD100);
   static const Color bgColor = Color(0xFFF8FAFC);
   static const Color surfaceWhite = Colors.white;
 
-  // --- FUNCTIONALITY: CHANGE PASSWORD ---
   void _showChangePasswordDialog() {
     final TextEditingController passController = TextEditingController();
     showDialog(
@@ -66,9 +64,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     );
   }
 
-  // --- FUNCTIONALITY: DOWNLOAD LOGS ---
   void _downloadLogs() async {
-    // Show a loading snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         duration: Duration(seconds: 2),
@@ -81,9 +77,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
         ),
       ),
     );
-
     await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(backgroundColor: Colors.green, content: Text("Download Complete: activity_logs.pdf saved.")),
@@ -92,66 +86,91 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: bgColor,
-      child: Column(
-        children: [
-          _buildTopNavigationBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
-              child: Column(
-                children: [
-                  _buildPremiumHeroSection(),
-                  const SizedBox(height: 40),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isMobile = constraints.maxWidth < 900;
+
+        return Material(
+          color: bgColor,
+          child: Column(
+            children: [
+              _buildTopNavigationBar(isMobile),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 16 : 60, 
+                    vertical: isMobile ? 20 : 40
+                  ),
+                  child: Column(
                     children: [
-                      Expanded(
-                        flex: 2,
-                        child: Column(
+                      _buildPremiumHeroSection(isMobile),
+                      const SizedBox(height: 30),
+                      
+                      // FLEXIBLE LAYOUT: Column for Mobile, Row for Desktop
+                      if (isMobile) ...[
+                        _buildIdentityCard(),
+                        const SizedBox(height: 20),
+                        _buildSessionCard(),
+                        const SizedBox(height: 20),
+                        _buildAppPreferencesCard(context),
+                      ] else ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoCard(
-                              title: "ACCOUNT IDENTITY",
-                              icon: Icons.verified_user_rounded,
-                              children: [
-                                _modernDataTile(Icons.badge_rounded, "STAFF ID", "STI-2026-0412"),
-                                const SizedBox(height: 25),
-                                _modernDataTile(Icons.email_rounded, "INSTITUTIONAL EMAIL", "claire.reyes@sti.edu.ph"),
-                              ],
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  _buildIdentityCard(),
+                                  const SizedBox(height: 30),
+                                  _buildAppPreferencesCard(context),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 30),
-                            _buildAppPreferencesCard(context),
+                            const SizedBox(width: 30),
+                            Expanded(
+                              flex: 3,
+                              child: _buildSessionCard(),
+                            ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 40),
-                      Expanded(
-                        flex: 3,
-                        child: _buildInfoCard(
-                          title: "ACTIVE SESSION DATA",
-                          icon: Icons.hub_rounded,
-                          children: [
-                            _buildWarningBanner(),
-                            const SizedBox(height: 35),
-                            _modernDataTile(Icons.terminal_rounded, "CURRENT SUBJECT CODE", widget.currentCode.toUpperCase()),
-                            const SizedBox(height: 25),
-                            _modernDataTile(Icons.auto_stories_rounded, "REGISTERED SUBJECT NAME", widget.currentName),
-                          ],
-                        ),
-                      ),
+                      ],
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ... (Keep _buildTopNavigationBar, _buildPremiumHeroSection, _buildProfileAvatar, _buildHeroStatsRow, _heroChip as they were) ...
+  Widget _buildIdentityCard() {
+    return _buildInfoCard(
+      title: "ACCOUNT IDENTITY",
+      icon: Icons.verified_user_rounded,
+      children: [
+        _modernDataTile(Icons.badge_rounded, "STAFF ID", "STI-2026-0412"),
+        const SizedBox(height: 25),
+        _modernDataTile(Icons.email_rounded, "INSTITUTIONAL EMAIL", "claire.reyes@sti.edu.ph"),
+      ],
+    );
+  }
+
+  Widget _buildSessionCard() {
+    return _buildInfoCard(
+      title: "ACTIVE SESSION DATA",
+      icon: Icons.hub_rounded,
+      children: [
+        _buildWarningBanner(),
+        const SizedBox(height: 35),
+        _modernDataTile(Icons.terminal_rounded, "CURRENT SUBJECT CODE", widget.currentCode.toUpperCase()),
+        const SizedBox(height: 25),
+        _modernDataTile(Icons.auto_stories_rounded, "REGISTERED SUBJECT NAME", widget.currentName),
+      ],
+    );
+  }
 
   Widget _buildAppPreferencesCard(BuildContext context) {
     return _buildInfoCard(
@@ -196,8 +215,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
             children: [
               Icon(icon, size: 20, color: stiNavy),
               const SizedBox(width: 15),
-              Text(label, style: const TextStyle(fontSize: 14, color: stiNavy, fontWeight: FontWeight.w600)),
-              const Spacer(),
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 14, color: stiNavy, fontWeight: FontWeight.w600))),
               const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
             ],
           ),
@@ -206,44 +224,86 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     );
   }
 
-  // --- RE-INSERTED REMAINING UI HELPERS ---
-  Widget _buildTopNavigationBar() {
+  Widget _buildTopNavigationBar(bool isMobile) {
     return Container(
-      height: 80, padding: const EdgeInsets.symmetric(horizontal: 60),
+      height: 80, padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 60),
       decoration: const BoxDecoration(color: surfaceWhite, border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5))),
       child: const Row(children: [Icon(Icons.account_circle_outlined, color: stiNavy, size: 24), SizedBox(width: 15), Text("SYSTEM PROFILE", style: TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 14, fontFamily: 'serif', letterSpacing: 2.0))]),
     );
   }
 
-  Widget _buildPremiumHeroSection() {
+  Widget _buildPremiumHeroSection(bool isMobile) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(35), gradient: const LinearGradient(colors: [stiNavy, Color(0xFF000033)], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: stiNavy.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 20))]),
-      child: Stack(children: [Positioned(right: -50, top: -50, child: CircleAvatar(radius: 150, backgroundColor: Colors.white.withValues(alpha: 0.03))), Padding(padding: const EdgeInsets.all(60), child: Row(children: [_buildProfileAvatar(), const SizedBox(width: 50), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Claire Reyes", style: TextStyle(color: surfaceWhite, fontSize: 48, fontWeight: FontWeight.w900, fontFamily: 'serif')), const Text("Senior Professor • Information Technology Department", style: TextStyle(color: stiGold, fontWeight: FontWeight.w600, fontSize: 18, letterSpacing: 0.8)), const SizedBox(height: 30), _buildHeroStatsRow()]))]))]),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(isMobile ? 25 : 35), 
+        gradient: const LinearGradient(colors: [stiNavy, Color(0xFF000033)], begin: Alignment.topLeft, end: Alignment.bottomRight), 
+        boxShadow: [BoxShadow(color: stiNavy.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 20))]
+      ),
+      child: Stack(
+        children: [
+          Positioned(right: -50, top: -50, child: CircleAvatar(radius: isMobile ? 80 : 150, backgroundColor: Colors.white.withValues(alpha: 0.03))),
+          Padding(
+            padding: EdgeInsets.all(isMobile ? 30 : 60), 
+            child: isMobile 
+              ? Column(
+                  children: [
+                    _buildProfileAvatar(isMobile),
+                    const SizedBox(height: 20),
+                    Text("Claire Reyes", textAlign: TextAlign.center, style: TextStyle(color: surfaceWhite, fontSize: isMobile ? 32 : 48, fontWeight: FontWeight.w900, fontFamily: 'serif')),
+                    const SizedBox(height: 8),
+                    Text("Senior Professor", textAlign: TextAlign.center, style: TextStyle(color: stiGold, fontWeight: FontWeight.w600, fontSize: isMobile ? 14 : 18)),
+                    const SizedBox(height: 20),
+                    _buildHeroStatsRow(),
+                  ],
+                )
+              : Row(
+                  children: [
+                    _buildProfileAvatar(isMobile), 
+                    const SizedBox(width: 50), 
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Claire Reyes", style: TextStyle(color: surfaceWhite, fontSize: 48, fontWeight: FontWeight.w900, fontFamily: 'serif')), const Text("Senior Professor • Information Technology", style: TextStyle(color: stiGold, fontWeight: FontWeight.w600, fontSize: 18)), const SizedBox(height: 30), _buildHeroStatsRow()]))
+                  ]
+                )
+          )
+        ]
+      ),
     );
   }
 
-  Widget _buildProfileAvatar() {
-    return Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: stiGold, shape: BoxShape.circle), child: const CircleAvatar(radius: 75, backgroundColor: bgColor, child: Icon(Icons.person_rounded, size: 85, color: stiNavy)));
+  Widget _buildProfileAvatar(bool isMobile) {
+    double radius = isMobile ? 50 : 75;
+    return Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: stiGold, shape: BoxShape.circle), child: CircleAvatar(radius: radius, backgroundColor: bgColor, child: Icon(Icons.person_rounded, size: radius * 1.1, color: stiNavy)));
   }
 
   Widget _buildHeroStatsRow() {
-    return Row(children: [_heroChip(Icons.calendar_today_rounded, "Joined 2021"), const SizedBox(width: 15), _heroChip(Icons.stars_rounded, "Faculty Elite")]);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _heroChip(Icons.calendar_today_rounded, "2021"), 
+        const SizedBox(width: 10), 
+        _heroChip(Icons.stars_rounded, "Elite")
+      ]
+    );
   }
 
   Widget _heroChip(IconData icon, String text) {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(50), border: Border.all(color: Colors.white.withValues(alpha: 0.1))), child: Row(children: [Icon(icon, size: 16, color: stiGold), const SizedBox(width: 10), Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))]));
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(50), border: Border.all(color: Colors.white.withValues(alpha: 0.1))), child: Row(children: [Icon(icon, size: 14, color: stiGold), const SizedBox(width: 8), Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))]));
   }
 
   Widget _buildInfoCard({required String title, required IconData icon, required List<Widget> children}) {
-    return Container(padding: const EdgeInsets.all(40), decoration: BoxDecoration(color: surfaceWhite, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 30, offset: const Offset(0, 10))], border: Border.all(color: const Color(0xFFE2E8F0))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: stiGold.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: stiNavy, size: 20)), const SizedBox(width: 15), Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: stiNavy, fontSize: 15, letterSpacing: 1.5))]), const Padding(padding: EdgeInsets.symmetric(vertical: 30), child: Divider(color: Color(0xFFF1F5F9), thickness: 2)), ...children]));
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(30), 
+      decoration: BoxDecoration(color: surfaceWhite, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 30, offset: const Offset(0, 10))], border: Border.all(color: const Color(0xFFE2E8F0))), 
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: stiGold.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: stiNavy, size: 20)), const SizedBox(width: 15), Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: stiNavy, fontSize: 13, letterSpacing: 1.5)))]), const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Color(0xFFF1F5F9), thickness: 2)), ...children])
+    );
   }
 
   Widget _modernDataTile(IconData icon, String label, String value) {
-    return Row(children: [Icon(icon, size: 22, color: Colors.grey[400]), const SizedBox(width: 20), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.0)), const SizedBox(height: 6), Text(value, style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 17))])]);
+    return Row(children: [Icon(icon, size: 22, color: Colors.grey[400]), const SizedBox(width: 20), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text(value, style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 15))]))]);
   }
 
   Widget _buildWarningBanner() {
-    return Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))), child: const Row(children: [Icon(Icons.security_update_good_rounded, color: Color(0xFF1D4ED8), size: 22), SizedBox(width: 15), Expanded(child: Text("DASHBOARD SCOPING: All analytics and records are currently limited to the course ID below.", style: TextStyle(fontSize: 12, color: Color(0xFF1D4ED8), fontWeight: FontWeight.w700, height: 1.5)))]));
+    return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))), child: const Row(children: [Icon(Icons.security_update_good_rounded, color: Color(0xFF1D4ED8), size: 20), SizedBox(width: 12), Expanded(child: Text("All analytics and records are currently limited to the course ID below.", style: TextStyle(fontSize: 11, color: Color(0xFF1D4ED8), fontWeight: FontWeight.w700, height: 1.4)))]));
   }
 }

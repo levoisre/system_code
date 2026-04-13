@@ -37,11 +37,6 @@ class _EditCoursePageState extends State<EditCoursePage> {
     _codeController = TextEditingController(text: widget.courseData?['code'] ?? "");
     _locController = TextEditingController(text: widget.courseData?['room'] ?? "");
     _descController = TextEditingController(text: widget.courseData?['desc'] ?? "");
-    _parseInitialTime();
-  }
-
-  void _parseInitialTime() {
-    // Logic for parsing time if necessary
   }
 
   @override
@@ -115,6 +110,10 @@ class _EditCoursePageState extends State<EditCoursePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine screen width for flexibility
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 800;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -132,81 +131,111 @@ class _EditCoursePageState extends State<EditCoursePage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: _buildMainCard(
-                    child: Column(
-                      children: [
-                        _buildModernField("Subject Name", _nameController, Icons.book_outlined),
-                        const SizedBox(height: 18),
-                        _buildModernField("Subject Code", _codeController, Icons.qr_code_2_outlined),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            Expanded(child: _buildTimeBox("Starts", _startTime, true)),
-                            const SizedBox(width: 12),
-                            Expanded(child: _buildTimeBox("Ends", _endTime, false)),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        _buildModernField("Location / Room", _locController, Icons.location_on_outlined),
-                        const SizedBox(height: 18),
-                        _buildModernField("Short Description", _descController, Icons.description_outlined, isMultiline: true),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  flex: 4,
-                  child: _buildMainCard(
-                    child: Column(
-                      children: [
-                        const Text("STUDENT ENROLLMENT", style: TextStyle(fontWeight: FontWeight.bold, color: darkBlue, letterSpacing: 1.1, fontSize: 12)),
-                        const Divider(height: 30),
-                        SizedBox(
-                          height: 350,
-                          child: _students.isEmpty 
-                            ? const Center(child: Text("No students enrolled", style: TextStyle(color: Colors.grey, fontSize: 12)))
-                            : ListView.builder(
-                                itemCount: _students.length,
-                                itemBuilder: (context, index) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const CircleAvatar(backgroundColor: Color(0xFFF1F5F9), radius: 15, child: Icon(Icons.person, color: darkBlue, size: 16)),
-                                  title: Text(_students[index], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline, color: destructiveRed, size: 18),
-                                    onPressed: () => setState(() => _students.removeAt(index)),
-                                  ),
-                                ),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // FLEXIBLE LAYOUT: Row for Desktop, Column for Mobile
+            isMobile 
+            ? Column(
+                children: [
+                  _buildFormSection(),
+                  const SizedBox(height: 24),
+                  _buildEnrollmentSection(),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: _buildFormSection()),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 4, child: _buildEnrollmentSection()),
+                ],
+              ),
             const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildBtn("DELETE SUBJECT", destructiveRed, _confirmDelete, true),
-                Row(
-                  children: [
-                    _buildBtn("DISCARD CHANGES", Colors.black54, () => Navigator.pop(context), true),
-                    const SizedBox(width: 16),
-                    _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false),
-                  ],
-                ),
-              ],
-            ),
+            _buildActionButtons(isMobile),
+            const SizedBox(height: 40),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFormSection() {
+    return _buildMainCard(
+      child: Column(
+        children: [
+          _buildModernField("Subject Name", _nameController, Icons.book_outlined),
+          const SizedBox(height: 18),
+          _buildModernField("Subject Code", _codeController, Icons.qr_code_2_outlined),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: _buildTimeBox("Starts", _startTime, true)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildTimeBox("Ends", _endTime, false)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _buildModernField("Location / Room", _locController, Icons.location_on_outlined),
+          const SizedBox(height: 18),
+          _buildModernField("Short Description", _descController, Icons.description_outlined, isMultiline: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnrollmentSection() {
+    return _buildMainCard(
+      child: Column(
+        children: [
+          const Text("STUDENT ENROLLMENT", style: TextStyle(fontWeight: FontWeight.bold, color: darkBlue, letterSpacing: 1.1, fontSize: 12)),
+          const Divider(height: 30),
+          SizedBox(
+            height: 350,
+            child: _students.isEmpty 
+              ? const Center(child: Text("No students enrolled", style: TextStyle(color: Colors.grey, fontSize: 12)))
+              : ListView.builder(
+                  itemCount: _students.length,
+                  itemBuilder: (context, index) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(backgroundColor: Color(0xFFF1F5F9), radius: 15, child: Icon(Icons.person, color: darkBlue, size: 16)),
+                    title: Text(_students[index], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.remove_circle_outline, color: destructiveRed, size: 18),
+                      onPressed: () => setState(() => _students.removeAt(index)),
+                    ),
+                  ),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(bool isMobile) {
+    if (isMobile) {
+      // VERTICAL BUTTONS FOR MOBILE
+      return Column(
+        children: [
+          _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false, double.infinity),
+          const SizedBox(height: 12),
+          _buildBtn("DISCARD CHANGES", Colors.black54, () => Navigator.pop(context), true, double.infinity),
+          const SizedBox(height: 24),
+          _buildBtn("DELETE SUBJECT", destructiveRed, _confirmDelete, true, double.infinity),
+        ],
+      );
+    }
+
+    // HORIZONTAL BUTTONS FOR DESKTOP
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildBtn("DELETE SUBJECT", destructiveRed, _confirmDelete, true, 180),
+        Row(
+          children: [
+            _buildBtn("DISCARD CHANGES", Colors.black54, () => Navigator.pop(context), true, 180),
+            const SizedBox(width: 16),
+            _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false, 180),
+          ],
+        ),
+      ],
     );
   }
 
@@ -216,10 +245,8 @@ class _EditCoursePageState extends State<EditCoursePage> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(20), 
-        border: Border.all(color: Colors.white),
         boxShadow: [
           BoxShadow(
-            // FIXED: Used withValues(alpha: ...)
             color: Colors.black.withValues(alpha: 0.05), 
             blurRadius: 15, 
             offset: const Offset(0, 5)
@@ -268,7 +295,6 @@ class _EditCoursePageState extends State<EditCoursePage> {
           maxLines: isMultiline ? 3 : 1,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
-            // FIXED: Used withValues(alpha: ...)
             prefixIcon: Icon(icon, size: 20, color: darkBlue.withValues(alpha: 0.5)),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
@@ -281,10 +307,10 @@ class _EditCoursePageState extends State<EditCoursePage> {
     );
   }
 
-  Widget _buildBtn(String label, Color color, VoidCallback tap, bool outline) {
+  Widget _buildBtn(String label, Color color, VoidCallback tap, bool outline, double width) {
     return SizedBox(
       height: 52, 
-      width: 180,
+      width: width,
       child: outline
           ? OutlinedButton(
               onPressed: tap, 
