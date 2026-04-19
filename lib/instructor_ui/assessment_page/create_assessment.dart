@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'quiz_service.dart'; // Ensure this points to your standalone service file
 
 class CreateAssessmentPage extends StatefulWidget {
-  const CreateAssessmentPage({super.key});
+  final String subjectCode; 
+  
+  const CreateAssessmentPage({super.key, required this.subjectCode});
 
   @override
   State<CreateAssessmentPage> createState() => _CreateAssessmentPageState();
@@ -26,6 +29,13 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     "Crossword",
   ];
 
+  final Map<String, String> _typeMapper = {
+    "Identification": "IDENTIFICATION",
+    "True or False": "TF",
+    "Multiple Choice": "MULTIPLE_CHOICE",
+    "Crossword": "CROSSWORD",
+  };
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -40,12 +50,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
 
   void _addNewQuestion() {
     setState(() {
-      _questions.add({
-        "type": "Identification",
-        "text": "",
-        "answer": "",
-        "options": ["", "", "", ""]
-      });
+      _questions.add({"type": "Identification"});
       _questionTextControllers.add(TextEditingController());
       _answerTextControllers.add(TextEditingController());
       _optionControllers.add(List.generate(4, (_) => TextEditingController()));
@@ -58,14 +63,14 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       _questionTextControllers[index].dispose();
       _answerTextControllers[index].dispose();
       for (var c in _optionControllers[index]) { c.dispose(); }
-
+      
       _questionTextControllers.removeAt(index);
       _answerTextControllers.removeAt(index);
       _optionControllers.removeAt(index);
     });
   }
 
-  void _submitAssessment() {
+  void _submitAssessment() async {
     if (_titleController.text.isEmpty || _durationController.text.isEmpty) {
       _showError("Please fill in the Title and Duration");
       return;
@@ -75,27 +80,50 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       return;
     }
 
-    final Map<String, dynamic> newAssessment = {
-      "title": _titleController.text.toUpperCase(),
-      "duration": "${_durationController.text} min",
-      "questions": _questions.length.toString(),
-      "points": (_questions.length * 5).toString(),
-      "due": "Just Now",
-      "isArchived": false,
-      "isGiven": false,
-      "fullQuestionData": List.generate(_questions.length, (i) => {
-            "type": _questions[i]['type'],
-            "text": _questionTextControllers[i].text,
-            "answer": _answerTextControllers[i].text,
-            "options": _questions[i]['type'] == "Multiple Choice"
-                ? _optionControllers[i].map((c) => c.text).toList()
-                : [],
-          }),
-    };
-    Navigator.pop(context, newAssessment);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator(color: stiNavy)),
+    );
+
+    List<Map<String, dynamic>> formattedQuestions = List.generate(_questions.length, (i) {
+      String uiType = _questions[i]['type'];
+      return {
+        "type": _typeMapper[uiType] ?? "IDENTIFICATION",
+        "question_text": _questionTextControllers[i].text,
+        "correct_answer": _answerTextControllers[i].text,
+        "hint": "Assessment Item", 
+        "metadata": uiType == "Multiple Choice"
+            ? _optionControllers[i].map((c) => c.text).toList()
+            : uiType == "Crossword"
+                ? {"row": 0, "col": 0, "direction": "across"}
+                : null,
+      };
+    });
+
+    // This calls the QuizService in quiz_service.dart
+    bool success = await QuizService.createAssessment(
+      subjectCode: widget.subjectCode,
+      title: _titleController.text.toUpperCase(),
+      description: "${_durationController.text} min duration",
+      questions: formattedQuestions,
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✨ Assessment Published Successfully!")),
+      );
+      Navigator.pop(context, true); 
+    } else {
+      _showError("Failed to save to server. Is the backend running?");
+    }
   }
 
   void _showError(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
@@ -111,20 +139,12 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text("CREATE NEW ASSESSMENT",
-            style: TextStyle(
-                color: stiNavy,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                fontFamily: 'serif')),
+            style: TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 16)),
         centerTitle: true,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Centering the form on Desktop (Max width 700px)
-          double horizontalPadding = constraints.maxWidth > 800 
-              ? (constraints.maxWidth - 700) / 2 
-              : 20;
-
+          double horizontalPadding = constraints.maxWidth > 800 ? (constraints.maxWidth - 700) / 2 : 20;
           return SingleChildScrollView(
             padding: EdgeInsets.symmetric(vertical: 30, horizontal: horizontalPadding),
             child: Column(
@@ -136,7 +156,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
                 const SizedBox(height: 30),
                 _buildSectionLabel("QUESTION BUILDER (${_questions.length})"),
                 const SizedBox(height: 15),
-                _questions.isEmpty ? _buildEmptyQuestionPlaceholder() : _buildQuestionList(),
+                _questions.isEmpty ? _buildEmptyPlaceholder() : _buildQuestionList(),
                 const SizedBox(height: 40),
                 _buildActionButtons(constraints.maxWidth > 600),
               ],
@@ -147,269 +167,176 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Text(text,
-        style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black45,
-            letterSpacing: 1.1,
-            fontSize: 12));
-  }
+  Widget _buildSectionLabel(String text) => Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, fontSize: 12));
 
   Widget _buildFormCard(bool isWide) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
-          ]),
-      child: isWide 
-        ? Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _inputField("Assessment Title", "e.g. Finals Quiz 1", _titleController, Icons.title, isNumeric: false)),
-              const SizedBox(width: 20),
-              SizedBox(width: 150, child: _inputField("Duration (Mins)", "30", _durationController, Icons.timer_outlined, isNumeric: true)),
-            ],
-          )
-        : Column(
-            children: [
-              _inputField("Assessment Title", "e.g. Finals Quiz 1", _titleController, Icons.title, isNumeric: false),
-              const SizedBox(height: 20),
-              _inputField("Duration (Mins)", "30", _durationController, Icons.timer_outlined, isNumeric: true),
-            ],
-          ),
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+      ),
+      child: isWide ? Row(children: [
+        Expanded(child: _inputField("Assessment Title", "Finals Quiz", _titleController, Icons.title)),
+        const SizedBox(width: 20),
+        SizedBox(width: 150, child: _inputField("Duration (Mins)", "30", _durationController, Icons.timer, isNumeric: true)),
+      ]) : Column(children: [
+        _inputField("Assessment Title", "Finals Quiz", _titleController, Icons.title),
+        const SizedBox(height: 20),
+        _inputField("Duration (Mins)", "30", _durationController, Icons.timer, isNumeric: true),
+      ]),
     );
   }
 
-  Widget _inputField(String label, String hint, TextEditingController controller, IconData icon, {required bool isNumeric}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black38)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: stiNavy, size: 20),
-            hintText: hint,
-            filled: true,
-            fillColor: bgColor,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          ),
+  Widget _inputField(String label, String hint, TextEditingController controller, IconData icon, {bool isNumeric = false}) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black38)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: controller,
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: stiNavy, size: 20),
+          hintText: hint,
+          filled: true,
+          fillColor: bgColor,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         ),
-      ],
-    );
+      ),
+    ]);
   }
 
   Widget _buildQuestionList() {
-    return Column(
-      children: [
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _questions.length,
-          itemBuilder: (context, index) => _buildQuestionCard(index),
-        ),
-        const SizedBox(height: 15),
-        Center(
-          child: TextButton.icon(
-            onPressed: _addNewQuestion,
-            icon: const Icon(Icons.add_circle_outline),
-            label: const Text("ADD ANOTHER QUESTION"),
-            style: TextButton.styleFrom(foregroundColor: stiNavy),
-          ),
-        ),
-      ],
-    );
+    return Column(children: [
+      ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _questions.length,
+        itemBuilder: (context, index) => _buildQuestionCard(index),
+      ),
+      const SizedBox(height: 15),
+      TextButton.icon(
+        onPressed: _addNewQuestion, 
+        icon: const Icon(Icons.add), 
+        label: const Text("ADD QUESTION"), 
+        style: TextButton.styleFrom(foregroundColor: stiNavy)
+      ),
+    ]);
   }
 
   Widget _buildQuestionCard(int index) {
     String selectedType = _questions[index]['type'];
-
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, 
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 5)],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedType,
-                    style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 12),
-                    items: _quizTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (val) => setState(() => _questions[index]['type'] = val!),
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                onPressed: () => _removeQuestion(index),
-              ),
-            ],
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          DropdownButton<String>(
+            value: selectedType,
+            style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold),
+            items: _quizTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+            onChanged: (val) => setState(() => _questions[index]['type'] = val!),
           ),
-          const SizedBox(height: 15),
-          TextField(
-            controller: _questionTextControllers[index],
-            maxLines: null,
-            decoration: const InputDecoration(
-              hintText: "Enter question prompt...",
-              hintStyle: TextStyle(fontSize: 14, color: Colors.black26),
-              border: InputBorder.none
-            ),
-          ),
-          const Divider(height: 30),
-          
-          if (selectedType == "Multiple Choice") ...[
-            const Text("OPTIONS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-            const SizedBox(height: 10),
-            _buildOptionsGrid(index),
-            const SizedBox(height: 10),
-          ],
-
-          if (selectedType == "True or False")
-            Row(
-              children: [
-                const Text("Correct Answer:", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(width: 15),
-                _answerToggleChip(index, "True"),
-                const SizedBox(width: 10),
-                _answerToggleChip(index, "False"),
-              ],
-            )
-          else
-            TextField(
-              controller: _answerTextControllers[index],
-              decoration: InputDecoration(
-                hintText: selectedType == "Multiple Choice" ? "Enter the exact text of correct choice" : "Enter correct answer",
-                hintStyle: const TextStyle(fontSize: 14, color: Colors.black26),
-                prefixIcon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
-                border: InputBorder.none
-              ),
-            ),
+          IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => _removeQuestion(index)),
+        ]),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _questionTextControllers[index], 
+          decoration: const InputDecoration(hintText: "Enter question text...", border: UnderlineInputBorder())
+        ),
+        const SizedBox(height: 20),
+        if (selectedType == "Multiple Choice") ...[
+          _buildOptionsGrid(index),
+          const SizedBox(height: 20),
         ],
-      ),
+        if (selectedType == "True or False") 
+          _buildTFChips(index)
+        else 
+          TextField(
+            controller: _answerTextControllers[index], 
+            decoration: InputDecoration(
+              hintText: selectedType == "Crossword" ? "Keyword" : "Correct answer", 
+              prefixIcon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+              filled: true,
+              fillColor: Colors.green.withValues(alpha: 0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)
+            )
+          ),
+      ]),
     );
   }
 
   Widget _buildOptionsGrid(int qIndex) {
-    return LayoutBuilder(builder: (context, constraints) {
-      return Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: List.generate(4, (i) {
-          // Responsive: 2 columns if space allows, otherwise 1 column
-          double width = constraints.maxWidth > 400 
-              ? (constraints.maxWidth - 10) / 2 
-              : constraints.maxWidth;
-          return SizedBox(
-            width: width,
-            child: TextField(
-              controller: _optionControllers[qIndex][i],
-              decoration: InputDecoration(
-                hintText: "Choice ${String.fromCharCode(65 + i)}",
-                prefixIcon: const Icon(Icons.radio_button_off, size: 16),
-                filled: true,
-                fillColor: bgColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 15),
-              ),
-            ),
-          );
-        }),
-      );
-    });
-  }
-
-  Widget _answerToggleChip(int index, String label) {
-    bool isSelected = _answerTextControllers[index].text == label;
-    return ChoiceChip(
-      label: Text(label, style: TextStyle(color: isSelected ? Colors.white : stiNavy, fontSize: 11)),
-      selected: isSelected,
-      selectedColor: stiNavy,
-      onSelected: (val) => setState(() => _answerTextControllers[index].text = label),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, 
+        mainAxisExtent: 50, 
+        crossAxisSpacing: 10, 
+        mainAxisSpacing: 10
+      ),
+      itemCount: 4,
+      itemBuilder: (ctx, i) => TextField(
+        controller: _optionControllers[qIndex][i],
+        decoration: InputDecoration(
+          hintText: "Choice ${String.fromCharCode(65 + i)}", 
+          filled: true, 
+          fillColor: bgColor, 
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+      ),
     );
   }
 
-  Widget _buildEmptyQuestionPlaceholder() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(15), 
-        border: Border.all(color: Colors.black12)
+  Widget _buildTFChips(int index) {
+    return Row(children: ["True", "False"].map((label) => Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(color: _answerTextControllers[index].text == label ? Colors.white : stiNavy)),
+        selected: _answerTextControllers[index].text == label,
+        selectedColor: stiNavy,
+        onSelected: (val) => setState(() => _answerTextControllers[index].text = label),
       ),
+    )).toList());
+  }
+
+  Widget _buildEmptyPlaceholder() => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          Icon(Icons.quiz_outlined, size: 50, color: stiNavy.withValues(alpha: 0.2)),
-          const SizedBox(height: 10),
-          const Text("Choose a quiz type to begin.", style: TextStyle(color: Colors.black26, fontSize: 14)),
+          const Icon(Icons.quiz_outlined, size: 60, color: Colors.black12),
           const SizedBox(height: 15),
-          ElevatedButton.icon(
-            onPressed: _addNewQuestion,
-            icon: const Icon(Icons.add),
-            label: const Text("START BUILDING"),
+          ElevatedButton(
+            onPressed: _addNewQuestion, 
             style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white),
+            child: const Text("START BUILDING"),
           ),
         ],
       ),
-    );
-  }
+    )
+  );
 
   Widget _buildActionButtons(bool isWide) {
-    Widget cancelBtn = OutlinedButton(
-      onPressed: () => Navigator.pop(context),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 20), 
-        side: const BorderSide(color: Colors.grey), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-      ),
-      child: const Text("CANCEL", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-    );
-
-    Widget publishBtn = ElevatedButton(
-      onPressed: _submitAssessment,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: stiNavy, 
-        foregroundColor: Colors.white, 
-        padding: const EdgeInsets.symmetric(vertical: 20), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-      ),
-      child: const Text("PUBLISH ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold)),
-    );
-
-    return isWide 
-      ? Row(
-          children: [
-            Expanded(child: cancelBtn),
-            const SizedBox(width: 15),
-            Expanded(flex: 2, child: publishBtn),
-          ],
+    return Row(children: [
+      Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL"))),
+      const SizedBox(width: 15),
+      Expanded(
+        flex: 2, 
+        child: ElevatedButton(
+          onPressed: _submitAssessment, 
+          style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white, padding: const EdgeInsets.all(15)), 
+          child: const Text("PUBLISH ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold))
         )
-      : Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            publishBtn,
-            const SizedBox(height: 10),
-            cancelBtn,
-          ],
-        );
+      ),
+    ]);
   }
 }
