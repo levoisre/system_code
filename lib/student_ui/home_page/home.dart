@@ -74,7 +74,6 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
         final duration = DateTime.now().difference(_startTime!);
         setState(() {
           totalElapsed = _formatDuration(duration);
-          // Only simulate proximity movement once connected
           if (proximityDistance < 2.5) proximityDistance += 0.01;
         });
 
@@ -150,9 +149,13 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
           ),
         ),
         actions: [
+          // Notifications Page integrated in Header
           IconButton(
             icon: const Icon(Icons.notifications, color: Colors.white), 
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()))
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const NotificationsPage())
+            )
           ),
           const SizedBox(width: 8),
         ],
@@ -255,7 +258,6 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
   }
 
   Widget _buildProximityIndicator() {
-    // Only shows connected if Clocked In (Verification successful)
     bool isConnected = isClockedIn;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -314,7 +316,6 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
             const Text('Verify Attendance', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'serif')),
             const SizedBox(height: 15),
             
-            // "Hub not yet connected" visible BEFORE scanning
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -373,7 +374,13 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
             const SizedBox(height: 20),
             const Text('IDENTIFIED', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'serif', color: darkNavy)),
             const SizedBox(height: 10),
-            // Confirmation that Hub is now connected
+            // Updated to include that attendance has been marked
+            const Text(
+              'Attendance has been marked successfully.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
             Text('Face recognized. Hub connected.\nSession started at: $clockInTime', textAlign: TextAlign.center),
             const SizedBox(height: 35),
             GestureDetector(

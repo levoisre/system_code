@@ -8,7 +8,6 @@ class AttendanceRequestsPage extends StatefulWidget {
 }
 
 class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
-  // Theme Colors - Unified with Dashboard
   static const Color darkNavy = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF8FAFC);
   static const Color accentGreen = Color(0xFF43A047);
@@ -16,14 +15,13 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
 
   String _selectedTab = "Pending";
 
-  // Mock Data: This simulates what students have submitted via their interface
   final List<Map<String, dynamic>> _requests = [
     {
       "id": 1, 
       "name": "Andrea Sy", 
       "date": "03/09/2026", 
       "category": "Medical", 
-      "reason": "Severe flu and fever. Physician advised 3 days of rest to recover fully and avoid spreading the illness.", 
+      "reason": "Severe flu and fever. Physician advised 3 days of rest to recover fully.", 
       "status": "Pending", 
       "doc": "medical_certificate_sy.jpg"
     },
@@ -32,23 +30,18 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
       "name": "Tony Hugh", 
       "date": "03/10/2026", 
       "category": "Personal", 
-      "reason": "Emergency family matter requiring immediate travel. I will catch up on missed laboratory activities.", 
+      "reason": "Emergency family matter requiring immediate travel.", 
       "status": "Pending", 
       "doc": "excuse_letter_hugh.png"
-    },
-    {
-      "id": 3, 
-      "name": "Alex Johnson", 
-      "date": "03/05/2026", 
-      "category": "School Event", 
-      "reason": "Representing the college in the Inter-school IT Olympics. Required to be on-site for the competition.", 
-      "status": "Approved", 
-      "doc": "event_permit.pdf"
     },
   ];
 
   @override
   Widget build(BuildContext context) {
+    // Detect screen width
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isDesktop = screenWidth > 800;
+
     List<Map<String, dynamic>> filteredList = 
         _requests.where((r) => r['status'] == _selectedTab).toList();
 
@@ -64,14 +57,20 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
       ),
       body: Column(
         children: [
-          _buildFilterTabs(),
+          _buildFilterTabs(isDesktop),
           Expanded(
             child: filteredList.isEmpty 
               ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(25),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) => _buildRequestCard(filteredList[index]),
+              : Center(
+                  child: Container(
+                    // Constrain width on desktop to prevent stretched cards
+                    constraints: BoxConstraints(maxWidth: isDesktop ? 800 : double.infinity),
+                    child: ListView.builder(
+                      padding: EdgeInsets.all(isDesktop ? 30 : 15),
+                      itemCount: filteredList.length,
+                      itemBuilder: (context, index) => _buildRequestCard(filteredList[index], isDesktop),
+                    ),
+                  ),
                 ),
           ),
         ],
@@ -79,58 +78,68 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
     );
   }
 
-  // --- UI: TOP TABS ---
-  Widget _buildFilterTabs() {
+  Widget _buildFilterTabs(bool isDesktop) {
     return Container(
       color: Colors.white,
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: ["Pending", "Approved", "Rejected"].map((tab) {
-          bool isSelected = _selectedTab == tab;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedTab = tab),
-            child: Column(
-              children: [
-                Text(tab, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? darkNavy : Colors.grey, fontSize: 13)),
-                const SizedBox(height: 5),
-                Container(height: 3, width: 40, color: isSelected ? darkNavy : Colors.transparent),
-              ],
-            ),
-          );
-        }).toList(),
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: ["Pending", "Approved", "Rejected"].map((tab) {
+              bool isSelected = _selectedTab == tab;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedTab = tab),
+                child: Column(
+                  children: [
+                    Text(tab, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? darkNavy : Colors.grey, fontSize: 13)),
+                    const SizedBox(height: 5),
+                    Container(height: 3, width: 40, color: isSelected ? darkNavy : Colors.transparent),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
 
-  // --- UI: REQUEST LIST CARD ---
-  Widget _buildRequestCard(Map<String, dynamic> request) {
+  Widget _buildRequestCard(Map<String, dynamic> request, bool isDesktop) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isDesktop ? 25 : 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 15, offset: Offset(0, 5))],
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 15, offset: Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(request['name'], style: const TextStyle(fontWeight: FontWeight.w900, color: darkNavy, fontSize: 14)),
+              Expanded(child: Text(request['name'], style: const TextStyle(fontWeight: FontWeight.w900, color: darkNavy, fontSize: 14))),
               Text(request['date'], style: const TextStyle(color: Colors.grey, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 10),
           Text("Category: ${request['category']}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
           const SizedBox(height: 15),
-          Row(
+          
+          // Use Wrap instead of Row to handle small screens gracefully
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
             children: [
               InkWell(
-                onTap: () => _showDigitalFormViewer(request),
+                onTap: () => _showDigitalFormViewer(request, isDesktop),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.visibility_outlined, color: Colors.blue, size: 18),
                     SizedBox(width: 6),
@@ -138,12 +147,15 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
                   ],
                 ),
               ),
-              const Spacer(),
-              if (_selectedTab == "Pending") ...[
-                _actionBtn("Reject", accentRed, () => _updateStatus(request['id'], "Rejected")),
-                const SizedBox(width: 10),
-                _actionBtn("Approve", accentGreen, () => _updateStatus(request['id'], "Approved")),
-              ]
+              if (_selectedTab == "Pending")
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _actionBtn("Reject", accentRed, () => _updateStatus(request['id'], "Rejected")),
+                    const SizedBox(width: 10),
+                    _actionBtn("Approve", accentGreen, () => _updateStatus(request['id'], "Approved")),
+                  ],
+                )
             ],
           ),
         ],
@@ -151,35 +163,29 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
     );
   }
 
-  // --- UI: DIGITAL FORM OVERLAY (FIXED OVERFLOW) ---
-  void _showDigitalFormViewer(Map<String, dynamic> request) {
+  void _showDigitalFormViewer(Map<String, dynamic> request, bool isDesktop) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: EdgeInsets.zero,
         content: Container(
-          width: 500,
-          // Constrain height to 80% of screen to prevent overflows
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          width: isDesktop ? 500 : MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // FIXED HEADER
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(color: darkNavy, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("STUDENT SUBMISSION FORM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.1)),
+                    const Text("STUDENT SUBMISSION FORM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.1)),
                     IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 20), onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
               ),
-
-              // SCROLLABLE BODY
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
@@ -195,58 +201,18 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.withValues(alpha: 0.1))),
-                        child: Text(request['reason'], style: const TextStyle(fontSize: 13, height: 1.5, color: Colors.black87)),
+                        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+                        child: Text(request['reason'], style: const TextStyle(fontSize: 13, height: 1.5)),
                       ),
                       const SizedBox(height: 20),
                       const Text("ATTACHED EVIDENCE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                       const SizedBox(height: 8),
-                      Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: bgColor, 
-                          borderRadius: BorderRadius.circular(12), 
-                          border: Border.all(color: darkNavy.withValues(alpha: 0.1))
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.image_outlined, color: Colors.blue, size: 30),
-                            const SizedBox(height: 8),
-                            Text(request['doc'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: darkNavy)),
-                            const Text("Evidence verified by student", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                          ],
-                        ),
-                      ),
+                      _buildEvidenceBox(request['doc']),
                     ],
                   ),
                 ),
               ),
-
-              // FIXED FOOTER
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: const Text("CLOSE", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () { _updateStatus(request['id'], "Approved"); Navigator.pop(ctx); },
-                        style: ElevatedButton.styleFrom(backgroundColor: accentGreen, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: const Text("APPROVE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildDialogFooter(ctx, request, !isDesktop),
             ],
           ),
         ),
@@ -254,7 +220,52 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
     );
   }
 
-  // --- HELPERS ---
+  Widget _buildEvidenceBox(String fileName) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.1))),
+      child: Row(
+        children: [
+          const Icon(Icons.description_outlined, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(child: Text(fileName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: darkNavy))),
+          const Icon(Icons.file_download_outlined, size: 18, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogFooter(BuildContext ctx, Map<String, dynamic> request, bool stackButtons) {
+    // Stack buttons on mobile to avoid overflow
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: stackButtons 
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(width: double.infinity, child: _dialogActionBtn("APPROVE", accentGreen, () { _updateStatus(request['id'], "Approved"); Navigator.pop(ctx); })),
+              const SizedBox(height: 8),
+              SizedBox(width: double.infinity, child: _dialogActionBtn("CLOSE", Colors.grey, () => Navigator.pop(ctx))),
+            ],
+          )
+        : Row(
+            children: [
+              Expanded(child: _dialogActionBtn("CLOSE", Colors.grey, () => Navigator.pop(ctx))),
+              const SizedBox(width: 12),
+              Expanded(child: _dialogActionBtn("APPROVE", accentGreen, () { _updateStatus(request['id'], "Approved"); Navigator.pop(ctx); })),
+            ],
+          ),
+    );
+  }
+
+  Widget _dialogActionBtn(String label, Color color, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(backgroundColor: color, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+  }
+
   Widget _buildFormRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -271,7 +282,7 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
   Widget _actionBtn(String label, Color color, VoidCallback onTap) {
     return ElevatedButton(
       onPressed: onTap,
-      style: ElevatedButton.styleFrom(backgroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      style: ElevatedButton.styleFrom(backgroundColor: color, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
       child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
     );
   }
@@ -281,7 +292,7 @@ class _AttendanceRequestsPageState extends State<AttendanceRequestsPage> {
       _requests.firstWhere((r) => r['id'] == id)['status'] = newStatus;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Excuse request has been $newStatus"), behavior: SnackBarBehavior.floating)
+      SnackBar(content: Text("Request marked as $newStatus"), behavior: SnackBarBehavior.floating)
     );
   }
 

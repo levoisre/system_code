@@ -13,11 +13,10 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
 
   final _titleController = TextEditingController();
   final _durationController = TextEditingController();
-  
+
   final List<Map<String, dynamic>> _questions = [];
   final List<TextEditingController> _questionTextControllers = [];
   final List<TextEditingController> _answerTextControllers = [];
-  // Controller for Multiple Choice options
   final List<List<TextEditingController>> _optionControllers = [];
 
   final List<String> _quizTypes = [
@@ -43,9 +42,9 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     setState(() {
       _questions.add({
         "type": "Identification",
-        "text": "", 
+        "text": "",
         "answer": "",
-        "options": ["", "", "", ""] // Default 4 slots for Multiple Choice
+        "options": ["", "", "", ""]
       });
       _questionTextControllers.add(TextEditingController());
       _answerTextControllers.add(TextEditingController());
@@ -59,7 +58,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       _questionTextControllers[index].dispose();
       _answerTextControllers[index].dispose();
       for (var c in _optionControllers[index]) { c.dispose(); }
-      
+
       _questionTextControllers.removeAt(index);
       _answerTextControllers.removeAt(index);
       _optionControllers.removeAt(index);
@@ -71,7 +70,6 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       _showError("Please fill in the Title and Duration");
       return;
     }
-
     if (_questions.isEmpty) {
       _showError("Please add at least one question");
       return;
@@ -86,15 +84,14 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       "isArchived": false,
       "isGiven": false,
       "fullQuestionData": List.generate(_questions.length, (i) => {
-        "type": _questions[i]['type'],
-        "text": _questionTextControllers[i].text,
-        "answer": _answerTextControllers[i].text,
-        "options": _questions[i]['type'] == "Multiple Choice" 
-            ? _optionControllers[i].map((c) => c.text).toList() 
-            : [],
-      }),
+            "type": _questions[i]['type'],
+            "text": _questionTextControllers[i].text,
+            "answer": _answerTextControllers[i].text,
+            "options": _questions[i]['type'] == "Multiple Choice"
+                ? _optionControllers[i].map((c) => c.text).toList()
+                : [],
+          }),
     };
-
     Navigator.pop(context, newAssessment);
   }
 
@@ -114,45 +111,77 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text("CREATE NEW ASSESSMENT",
-          style: TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 16, fontFamily: 'serif')),
+            style: TextStyle(
+                color: stiNavy,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                fontFamily: 'serif')),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionLabel("ASSESSMENT DETAILS"),
-            const SizedBox(height: 15),
-            _buildFormCard(),
-            const SizedBox(height: 30),
-            _buildSectionLabel("QUESTION BUILDER (${_questions.length})"),
-            const SizedBox(height: 15),
-            _questions.isEmpty ? _buildEmptyQuestionPlaceholder() : _buildQuestionList(),
-            const SizedBox(height: 40),
-            _buildActionButtons(),
-          ],
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Centering the form on Desktop (Max width 700px)
+          double horizontalPadding = constraints.maxWidth > 800 
+              ? (constraints.maxWidth - 700) / 2 
+              : 20;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(vertical: 30, horizontal: horizontalPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionLabel("ASSESSMENT DETAILS"),
+                const SizedBox(height: 15),
+                _buildFormCard(constraints.maxWidth > 600),
+                const SizedBox(height: 30),
+                _buildSectionLabel("QUESTION BUILDER (${_questions.length})"),
+                const SizedBox(height: 15),
+                _questions.isEmpty ? _buildEmptyQuestionPlaceholder() : _buildQuestionList(),
+                const SizedBox(height: 40),
+                _buildActionButtons(constraints.maxWidth > 600),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildSectionLabel(String text) {
-    return Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.1, fontSize: 12));
+    return Text(text,
+        style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black45,
+            letterSpacing: 1.1,
+            fontSize: 12));
   }
 
-  Widget _buildFormCard() {
+  Widget _buildFormCard(bool isWide) {
     return Container(
       padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
-      child: Column(
-        children: [
-          _inputField("Assessment Title", "e.g. Finals Quiz 1", _titleController, Icons.title, isNumeric: false),
-          const SizedBox(height: 20),
-          _inputField("Duration (Mins)", "30", _durationController, Icons.timer_outlined, isNumeric: true),
-        ],
-      ),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
+          ]),
+      child: isWide 
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _inputField("Assessment Title", "e.g. Finals Quiz 1", _titleController, Icons.title, isNumeric: false)),
+              const SizedBox(width: 20),
+              SizedBox(width: 150, child: _inputField("Duration (Mins)", "30", _durationController, Icons.timer_outlined, isNumeric: true)),
+            ],
+          )
+        : Column(
+            children: [
+              _inputField("Assessment Title", "e.g. Finals Quiz 1", _titleController, Icons.title, isNumeric: false),
+              const SizedBox(height: 20),
+              _inputField("Duration (Mins)", "30", _durationController, Icons.timer_outlined, isNumeric: true),
+            ],
+          ),
     );
   }
 
@@ -188,11 +217,13 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           itemBuilder: (context, index) => _buildQuestionCard(index),
         ),
         const SizedBox(height: 15),
-        TextButton.icon(
-          onPressed: _addNewQuestion,
-          icon: const Icon(Icons.add_circle_outline),
-          label: const Text("ADD ANOTHER QUESTION"),
-          style: TextButton.styleFrom(foregroundColor: stiNavy),
+        Center(
+          child: TextButton.icon(
+            onPressed: _addNewQuestion,
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text("ADD ANOTHER QUESTION"),
+            style: TextButton.styleFrom(foregroundColor: stiNavy),
+          ),
         ),
       ],
     );
@@ -223,7 +254,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
                     value: selectedType,
                     style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 12),
                     items: _quizTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (val) => setState(() => _questions[index]['type'] = val),
+                    onChanged: (val) => setState(() => _questions[index]['type'] = val!),
                   ),
                 ),
               ),
@@ -236,6 +267,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           const SizedBox(height: 15),
           TextField(
             controller: _questionTextControllers[index],
+            maxLines: null,
             decoration: const InputDecoration(
               hintText: "Enter question prompt...",
               hintStyle: TextStyle(fontSize: 14, color: Colors.black26),
@@ -244,29 +276,13 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           ),
           const Divider(height: 30),
           
-          // --- CONDITIONAL UI FOR MULTIPLE CHOICE ---
           if (selectedType == "Multiple Choice") ...[
             const Text("OPTIONS", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 10),
-            for (int i = 0; i < 4; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TextField(
-                  controller: _optionControllers[index][i],
-                  decoration: InputDecoration(
-                    hintText: "Choice ${String.fromCharCode(65 + i)}",
-                    prefixIcon: const Icon(Icons.radio_button_off, size: 16),
-                    filled: true,
-                    fillColor: bgColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 15),
-                  ),
-                ),
-              ),
+            _buildOptionsGrid(index),
             const SizedBox(height: 10),
           ],
 
-          // --- DYNAMIC CORRECT ANSWER FIELD ---
           if (selectedType == "True or False")
             Row(
               children: [
@@ -292,6 +308,35 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     );
   }
 
+  Widget _buildOptionsGrid(int qIndex) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: List.generate(4, (i) {
+          // Responsive: 2 columns if space allows, otherwise 1 column
+          double width = constraints.maxWidth > 400 
+              ? (constraints.maxWidth - 10) / 2 
+              : constraints.maxWidth;
+          return SizedBox(
+            width: width,
+            child: TextField(
+              controller: _optionControllers[qIndex][i],
+              decoration: InputDecoration(
+                hintText: "Choice ${String.fromCharCode(65 + i)}",
+                prefixIcon: const Icon(Icons.radio_button_off, size: 16),
+                filled: true,
+                fillColor: bgColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+              ),
+            ),
+          );
+        }),
+      );
+    });
+  }
+
   Widget _answerToggleChip(int index, String label) {
     bool isSelected = _answerTextControllers[index].text == label;
     return ChoiceChip(
@@ -306,7 +351,11 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.black12)),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(15), 
+        border: Border.all(color: Colors.black12)
+      ),
       child: Column(
         children: [
           Icon(Icons.quiz_outlined, size: 50, color: stiNavy.withValues(alpha: 0.2)),
@@ -324,25 +373,43 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20), side: const BorderSide(color: Colors.grey), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text("CANCEL", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _submitAssessment,
-            style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text("PUBLISH ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ],
+  Widget _buildActionButtons(bool isWide) {
+    Widget cancelBtn = OutlinedButton(
+      onPressed: () => Navigator.pop(context),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 20), 
+        side: const BorderSide(color: Colors.grey), 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+      ),
+      child: const Text("CANCEL", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
     );
+
+    Widget publishBtn = ElevatedButton(
+      onPressed: _submitAssessment,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: stiNavy, 
+        foregroundColor: Colors.white, 
+        padding: const EdgeInsets.symmetric(vertical: 20), 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+      ),
+      child: const Text("PUBLISH ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold)),
+    );
+
+    return isWide 
+      ? Row(
+          children: [
+            Expanded(child: cancelBtn),
+            const SizedBox(width: 15),
+            Expanded(flex: 2, child: publishBtn),
+          ],
+        )
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            publishBtn,
+            const SizedBox(height: 10),
+            cancelBtn,
+          ],
+        );
   }
 }

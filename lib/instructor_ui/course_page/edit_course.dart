@@ -13,6 +13,11 @@ class _EditCoursePageState extends State<EditCoursePage> {
   static const Color bgColor = Color(0xFFF4F7FA);
   static const Color borderSideColor = Color(0xFFEEEEEE);
   static const Color destructiveRed = Color(0xFFD32F2F);
+  
+  // Pre-calculated values to replace withOpacity
+  static const Color darkBlueMuted = Color(0x1A000080); // 10% opacity
+  static const Color darkBlueFieldIcon = Color(0x80000080); // 50% opacity
+  static const Color shadowColor = Color(0x0D000000); // 5% opacity
 
   late TextEditingController _nameController;
   late TextEditingController _codeController;
@@ -22,13 +27,7 @@ class _EditCoursePageState extends State<EditCoursePage> {
   TimeOfDay _startTime = const TimeOfDay(hour: 7, minute: 30);
   TimeOfDay _endTime = const TimeOfDay(hour: 9, minute: 30);
 
-  final List<String> _students = [
-    "Amigo, Raphael",
-    "Brusco, Hannah",
-    "Fabrino, Valerie",
-    "Garcia, Maria",
-    "Johnson, Alex",
-  ];
+  late List<String> _students;
 
   @override
   void initState() {
@@ -37,6 +36,46 @@ class _EditCoursePageState extends State<EditCoursePage> {
     _codeController = TextEditingController(text: widget.courseData?['code'] ?? "");
     _locController = TextEditingController(text: widget.courseData?['room'] ?? "");
     _descController = TextEditingController(text: widget.courseData?['desc'] ?? "");
+
+    _students = List<String>.from(widget.courseData?['students'] ?? [
+      "Amigo, Raphael",
+      "Brusco, Hannah",
+      "Fabrino, Valerie",
+      "Garcia, Maria",
+      "Johnson, Alex",
+    ]);
+
+    if (widget.courseData?['sched'] != null) {
+      _parseSchedule(widget.courseData!['sched']);
+    }
+  }
+
+  void _parseSchedule(String sched) {
+    try {
+      List<String> parts = sched.split(" - ");
+      if (parts.length == 2) {
+        setState(() {
+          _startTime = _stringToTimeOfDay(parts[0]);
+          _endTime = _stringToTimeOfDay(parts[1]);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error parsing schedule: $e");
+    }
+  }
+
+  TimeOfDay _stringToTimeOfDay(String tod) {
+    final format = RegExp(r'(\d+):(\d+)\s+(AM|PM)');
+    final match = format.firstMatch(tod);
+    if (match != null) {
+      int hour = int.parse(match.group(1)!);
+      int minute = int.parse(match.group(2)!);
+      String period = match.group(3)!;
+      if (period == "PM" && hour < 12) hour += 12;
+      if (period == "AM" && hour == 12) hour = 0;
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+    return const TimeOfDay(hour: 8, minute: 0);
   }
 
   @override
@@ -62,7 +101,7 @@ class _EditCoursePageState extends State<EditCoursePage> {
         ),
         content: Text(
           "Are you sure you want to permanently delete '${_nameController.text}'? "
-          "All attendance records, grades, and student lists for this subject will be removed.",
+          "All attendance records and student lists will be removed.",
         ),
         actions: [
           TextButton(
@@ -71,12 +110,11 @@ class _EditCoursePageState extends State<EditCoursePage> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); 
-              Navigator.pop(context, "DELETE"); 
+              Navigator.pop(context);
+              Navigator.pop(context, "DELETE");
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: destructiveRed,
-              elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text("DELETE SUBJECT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -102,6 +140,7 @@ class _EditCoursePageState extends State<EditCoursePage> {
       "sched": "${_startTime.format(context)} - ${_endTime.format(context)}",
       "color": widget.courseData?['color'] ?? darkBlue,
       "category": widget.courseData?['category'] ?? "Core",
+      "students": _students,
       "studentCount": _students.length.toString(),
     };
 
@@ -110,10 +149,6 @@ class _EditCoursePageState extends State<EditCoursePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine screen width for flexibility
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 800;
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -123,41 +158,49 @@ class _EditCoursePageState extends State<EditCoursePage> {
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('EDIT SUBJECT DETAILS', 
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'serif', fontSize: 16)),
+        title: const Text(
+          'EDIT SUBJECT DETAILS',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // FLEXIBLE LAYOUT: Row for Desktop, Column for Mobile
-            isMobile 
-            ? Column(
-                children: [
-                  _buildFormSection(),
-                  const SizedBox(height: 24),
-                  _buildEnrollmentSection(),
-                ],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 5, child: _buildFormSection()),
-                  const SizedBox(width: 24),
-                  Expanded(flex: 4, child: _buildEnrollmentSection()),
-                ],
-              ),
-            const SizedBox(height: 40),
-            _buildActionButtons(isMobile),
-            const SizedBox(height: 40),
-          ],
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isDesktop = constraints.maxWidth > 750;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                if (isDesktop)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 5, child: _buildFormCard()),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 4, child: _buildEnrollmentCard()),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildFormCard(),
+                      const SizedBox(height: 20),
+                      _buildEnrollmentCard(),
+                    ],
+                  ),
+                const SizedBox(height: 40),
+                _buildActionButtons(isDesktop),
+                const SizedBox(height: 40),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildFormSection() {
+  Widget _buildFormCard() {
     return _buildMainCard(
       child: Column(
         children: [
@@ -181,37 +224,53 @@ class _EditCoursePageState extends State<EditCoursePage> {
     );
   }
 
-  Widget _buildEnrollmentSection() {
+  Widget _buildEnrollmentCard() {
     return _buildMainCard(
       child: Column(
         children: [
-          const Text("STUDENT ENROLLMENT", style: TextStyle(fontWeight: FontWeight.bold, color: darkBlue, letterSpacing: 1.1, fontSize: 12)),
+          const Text("STUDENT ENROLLMENT", style: TextStyle(fontWeight: FontWeight.bold, color: darkBlue, fontSize: 12)),
           const Divider(height: 30),
           SizedBox(
             height: 350,
-            child: _students.isEmpty 
-              ? const Center(child: Text("No students enrolled", style: TextStyle(color: Colors.grey, fontSize: 12)))
-              : ListView.builder(
-                  itemCount: _students.length,
-                  itemBuilder: (context, index) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(backgroundColor: Color(0xFFF1F5F9), radius: 15, child: Icon(Icons.person, color: darkBlue, size: 16)),
-                    title: Text(_students[index], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: destructiveRed, size: 18),
-                      onPressed: () => setState(() => _students.removeAt(index)),
+            child: _students.isEmpty
+                ? const Center(child: Text("No students enrolled"))
+                : ListView.builder(
+                    itemCount: _students.length,
+                    itemBuilder: (context, index) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: darkBlueMuted, // Replaced withOpacity(0.1)
+                        child: const Icon(Icons.person, color: darkBlue, size: 18),
+                      ),
+                      title: Text(_students[index], style: const TextStyle(fontSize: 13)),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: destructiveRed, size: 18),
+                        onPressed: () => setState(() => _students.removeAt(index)),
+                      ),
                     ),
                   ),
-                ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons(bool isMobile) {
-    if (isMobile) {
-      // VERTICAL BUTTONS FOR MOBILE
+  Widget _buildActionButtons(bool isDesktop) {
+    if (isDesktop) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildBtn("DELETE SUBJECT", destructiveRed, _confirmDelete, true, 200),
+          Row(
+            children: [
+              _buildBtn("DISCARD CHANGES", Colors.black54, () => Navigator.pop(context), true, 200),
+              const SizedBox(width: 16),
+              _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false, 200),
+            ],
+          ),
+        ],
+      );
+    } else {
       return Column(
         children: [
           _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false, double.infinity),
@@ -222,36 +281,21 @@ class _EditCoursePageState extends State<EditCoursePage> {
         ],
       );
     }
-
-    // HORIZONTAL BUTTONS FOR DESKTOP
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildBtn("DELETE SUBJECT", destructiveRed, _confirmDelete, true, 180),
-        Row(
-          children: [
-            _buildBtn("DISCARD CHANGES", Colors.black54, () => Navigator.pop(context), true, 180),
-            const SizedBox(width: 16),
-            _buildBtn("SAVE SUBJECT", darkBlue, _saveChanges, false, 180),
-          ],
-        ),
-      ],
-    );
   }
 
   Widget _buildMainCard({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(20), 
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), 
+            color: shadowColor, // Replaced withOpacity(0.05)
             blurRadius: 15, 
             offset: const Offset(0, 5)
           )
-        ]
+        ],
       ),
       child: child,
     );
@@ -270,12 +314,16 @@ class _EditCoursePageState extends State<EditCoursePage> {
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), border: Border.all(color: borderSideColor), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              border: Border.all(color: borderSideColor),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(time.format(context), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)), 
-                const Icon(Icons.access_time, size: 18, color: darkBlue)
+                Text(time.format(context), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const Icon(Icons.access_time, size: 18, color: darkBlue),
               ],
             ),
           ),
@@ -295,7 +343,7 @@ class _EditCoursePageState extends State<EditCoursePage> {
           maxLines: isMultiline ? 3 : 1,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: darkBlue.withValues(alpha: 0.5)),
+            prefixIcon: Icon(icon, size: 20, color: darkBlueFieldIcon), // Replaced withOpacity(0.5)
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: borderSideColor)),
@@ -309,24 +357,26 @@ class _EditCoursePageState extends State<EditCoursePage> {
 
   Widget _buildBtn(String label, Color color, VoidCallback tap, bool outline, double width) {
     return SizedBox(
-      height: 52, 
+      height: 52,
       width: width,
       child: outline
           ? OutlinedButton(
-              onPressed: tap, 
+              onPressed: tap,
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: color, width: 1.5), 
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))
+                side: BorderSide(color: color, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5)))
+              child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+            )
           : ElevatedButton(
-              onPressed: tap, 
+              onPressed: tap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: color, 
+                backgroundColor: color,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5))),
+              child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+            ),
     );
   }
 }

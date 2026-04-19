@@ -48,10 +48,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Detect screen width for responsive logic
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth > 800;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: darkNavy, // UPDATED: Header is now Blue
+        backgroundColor: darkNavy,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
@@ -79,24 +83,32 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ),
             ),
         ],
-        // The filter bar stays white for better contrast against the blue header
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
-          child: _buildFilterBar(),
+          child: _buildFilterBar(isDesktop),
         ),
       ),
-      body: _filteredNotifications.isEmpty
-          ? _buildEmptyState()
-          : ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: _filteredNotifications.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _buildNotificationItem(_filteredNotifications[index]),
-            ),
+      body: Center(
+        child: Container(
+          // Centering content on Desktop to avoid "stretched" look
+          constraints: BoxConstraints(maxWidth: isDesktop ? 800 : double.infinity),
+          child: _filteredNotifications.isEmpty
+              ? _buildEmptyState()
+              : ListView.separated(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 40 : 20, 
+                    vertical: 20
+                  ),
+                  itemCount: _filteredNotifications.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) => _buildNotificationItem(_filteredNotifications[index]),
+                ),
+        ),
+      ),
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(bool isDesktop) {
     List<String> categories = ["All", "System", "Attendance", "Quiz"];
     return Container(
       height: 60,
@@ -105,33 +117,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEDF2F7))),
       ),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          bool isSelected = _selectedFilter == categories[index];
-          return GestureDetector(
-            onTap: () => _applyFilter(categories[index]),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? darkNavy : bgColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: Text(
-                  categories[index],
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : Colors.grey[600],
+      child: Center( // Centers the filter chips on Desktop
+        child: ListView.separated(
+          shrinkWrap: true, // Crucial for centering inside a Center widget
+          scrollDirection: Axis.horizontal,
+          itemCount: categories.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            bool isSelected = _selectedFilter == categories[index];
+            return GestureDetector(
+              onTap: () => _applyFilter(categories[index]),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? darkNavy : bgColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Text(
+                    categories[index],
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : Colors.grey[600],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -142,7 +157,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(15), 
-        boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 10, offset: Offset(0, 4))]
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
+        ]
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,12 +181,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 13)),
+                    Flexible(
+                      child: Text(
+                        item['title'], 
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Text(item['time'], style: const TextStyle(fontSize: 10, color: Colors.grey)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(item['desc'], style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.4)),
+                Text(
+                  item['desc'], 
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.4)
+                ),
               ],
             ),
           ),
