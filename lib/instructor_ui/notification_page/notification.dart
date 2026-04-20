@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -10,13 +11,11 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   static const Color darkNavy = Color(0xFF000080);
   static const Color bgColor = Color(0xFFF8FAFC);
+  
+  late io.Socket socket;
 
   final List<Map<String, dynamic>> _allNotifications = [
-    {"id": 1, "type": "System", "title": "Hotspot Active", "desc": "Classroom hotspot is now broadcasting.", "time": "2 mins ago", "icon": Icons.wifi_tethering, "color": Colors.green},
-    {"id": 2, "type": "Attendance", "title": "Attendance Alert", "desc": "3 students are currently out of range.", "time": "5 mins ago", "icon": Icons.person_search, "color": Colors.orange},
-    {"id": 3, "type": "System", "title": "Update Available", "desc": "Version 2.1 is ready for installation.", "time": "1 hour ago", "icon": Icons.system_update, "color": Colors.blue},
-    {"id": 4, "type": "Quiz", "title": "Quiz Generated", "desc": "AI has successfully generated 10 questions.", "time": "3 hours ago", "icon": Icons.psychology, "color": Colors.purple},
-    {"id": 5, "type": "Attendance", "title": "New Enrollment", "desc": "Alex Johnson has joined the class roster.", "time": "Yesterday", "icon": Icons.person_add, "color": Colors.teal},
+    {"id": 1, "type": "System", "title": "Hotspot Active", "desc": "Classroom hotspot is now broadcasting.", "time": "Just now", "icon": Icons.wifi_tethering, "color": Colors.green},
   ];
 
   List<Map<String, dynamic>> _filteredNotifications = [];
@@ -26,6 +25,53 @@ class _NotificationsPageState extends State<NotificationsPage> {
   void initState() {
     super.initState();
     _filteredNotifications = List.from(_allNotifications);
+    _connectSocket();
+  }
+
+  void _connectSocket() {
+    // Replace with your server IP for physical testing
+    socket = io.io('http://localhost:5000', 
+      io.OptionBuilder()
+        .setTransports(['websocket'])
+        .disableAutoConnect()
+        .build());
+
+    socket.connect();
+
+    // Listen for events specifically intended for the Instructor
+    socket.on('teacher_notification', (data) {
+      if (mounted) {
+        setState(() {
+          final newNotif = {
+            "id": DateTime.now().millisecondsSinceEpoch,
+            "type": data['type'] ?? "System",
+            "title": data['title'],
+            "desc": data['desc'],
+            "time": "Just now",
+            "icon": _getIconForType(data['type']),
+            "color": _getColorForType(data['type']),
+          };
+          _allNotifications.insert(0, newNotif);
+          _applyFilter(_selectedFilter); // Refresh the current view
+        });
+      }
+    });
+  }
+
+  IconData _getIconForType(String? type) {
+    switch (type) {
+      case 'Attendance': return Icons.person_search;
+      case 'Quiz': return Icons.psychology;
+      default: return Icons.notifications_active;
+    }
+  }
+
+  Color _getColorForType(String? type) {
+    switch (type) {
+      case 'Attendance': return Colors.orange;
+      case 'Quiz': return Colors.purple;
+      default: return Colors.blue;
+    }
   }
 
   void _applyFilter(String category) {
@@ -47,8 +93,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   @override
+  void dispose() {
+    socket.disconnect();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Detect screen width for responsive logic
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDesktop = screenWidth > 800;
 
@@ -62,25 +113,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "NOTIFICATIONS",
-          style: TextStyle(
-            color: Colors.white, 
-            fontSize: 14, 
-            fontWeight: FontWeight.w900, 
-            fontFamily: 'serif', 
-            letterSpacing: 1.0
-          ),
-        ),
+        title: const Text("NOTIFICATIONS", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
         actions: [
           if (_allNotifications.isNotEmpty)
             TextButton(
               onPressed: _clearAll,
-              child: const Text(
-                "Clear All", 
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)
-              ),
+              child: const Text("Clear All", style: TextStyle(color: Colors.white70, fontSize: 11)),
             ),
         ],
         bottom: PreferredSize(
@@ -90,15 +129,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ),
       body: Center(
         child: Container(
-          // Centering content on Desktop to avoid "stretched" look
           constraints: BoxConstraints(maxWidth: isDesktop ? 800 : double.infinity),
           child: _filteredNotifications.isEmpty
               ? _buildEmptyState()
               : ListView.separated(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isDesktop ? 40 : 20, 
-                    vertical: 20
-                  ),
+                  padding: const EdgeInsets.all(20),
                   itemCount: _filteredNotifications.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) => _buildNotificationItem(_filteredNotifications[index]),
@@ -113,13 +148,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFEDF2F7))),
-      ),
-      child: Center( // Centers the filter chips on Desktop
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Center(
         child: ListView.separated(
-          shrinkWrap: true, // Crucial for centering inside a Center widget
+          shrinkWrap: true,
           scrollDirection: Axis.horizontal,
           itemCount: categories.length,
           separatorBuilder: (context, index) => const SizedBox(width: 10),
@@ -136,11 +168,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 child: Center(
                   child: Text(
                     categories[index],
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.grey[600]),
                   ),
                 ),
               ),
@@ -157,13 +185,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(15), 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04), 
-            blurRadius: 10, 
-            offset: const Offset(0, 4)
-          )
-        ]
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))]
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,22 +203,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(
-                      child: Text(
-                        item['title'], 
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
+                    Flexible(child: Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 13))),
                     Text(item['time'], style: const TextStyle(fontSize: 10, color: Colors.grey)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  item['desc'], 
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.4)
-                ),
+                Text(item['desc'], style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.4)),
               ],
             ),
           ),

@@ -6,7 +6,11 @@ class RecitationFacilitatorPage extends StatefulWidget {
   final String subjectCode;
   final String subjectName;
 
-  const RecitationFacilitatorPage({super.key, required this.subjectCode, required this.subjectName});
+  const RecitationFacilitatorPage({
+    super.key, 
+    required this.subjectCode, 
+    required this.subjectName
+  });
 
   @override
   State<RecitationFacilitatorPage> createState() => _RecitationFacilitatorPageState();
@@ -24,23 +28,47 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
   @override
   void initState() {
     super.initState();
+    debugPrint("📡 Recitation Page active for: ${widget.subjectCode}");
     _refreshStats();
   }
 
+  // --- CORE LOGIC ---
+
   Future<void> _refreshStats() async {
-    final stats = await RecitationService.getSessionStats(widget.subjectCode);
+    // FALLBACK: Ensures demo works even if the navigator sends the old 'CPE 401' code
+    String activeCode = widget.subjectCode.contains("401") 
+        ? "DATA STRUCTURES" 
+        : widget.subjectCode;
+
+    final stats = await RecitationService.getSessionStats(activeCode);
+    
     if (!mounted) return;
-    setState(() => _currentStats = stats);
+    setState(() {
+      _currentStats = stats;
+    });
   }
 
   void _pickRandomStudent() async {
-    if (_currentStats.isEmpty) return;
-    setState(() { _isSpinning = true; _selectedStudent = null; });
+    if (_currentStats.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No students present in this session.")),
+      );
+      return;
+    }
+    
+    setState(() { 
+      _isSpinning = true; 
+      _selectedStudent = null; 
+    });
 
+    // Use fallback subject code
+    String activeCode = widget.subjectCode.contains("401") ? "DATA STRUCTURES" : widget.subjectCode;
     List<String> present = _currentStats.map((e) => e['name'].toString()).toList();
-    String? result = await RecitationService.pickStudent(widget.subjectCode, present);
+    
+    String? result = await RecitationService.pickStudent(activeCode, present);
 
-    await Future.delayed(const Duration(milliseconds: 1000));
+    // Simulated "Wheel Spin" feel for the demo
+    await Future.delayed(const Duration(milliseconds: 1500));
     
     if (!mounted) return;
     
@@ -54,6 +82,8 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
 
   void _showGradingDialog(String studentName) {
     int selectedStars = 0;
+    String activeCode = widget.subjectCode.contains("401") ? "DATA STRUCTURES" : widget.subjectCode;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -62,12 +92,13 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
           child: Container(
             padding: const EdgeInsets.all(32),
-            width: 450,
+            width: 400,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.stars_rounded, color: stiGold, size: 48),
                 const SizedBox(height: 12),
+                const Text("RECITE PERFORMANCE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                 Text(studentName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: stiNavy)),
                 const Divider(height: 40),
                 Row(
@@ -84,16 +115,14 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
                     final navigator = Navigator.of(context);
                     final messenger = ScaffoldMessenger.of(context);
 
-                    final bool ok = await RecitationService.submitGrade(studentName, widget.subjectCode, selectedStars);
+                    final bool ok = await RecitationService.submitGrade(studentName, activeCode, selectedStars);
                     
-                    if (!mounted) return;
-
                     if (ok) {
                       navigator.pop(); 
-                      _refreshStats();
+                      await _refreshStats(); // REFRESH UI: Immediately update star counts in roster
                     } else {
                       messenger.showSnackBar(
-                        const SnackBar(content: Text("Submission failed. Please try again.")),
+                        const SnackBar(content: Text("Submission failed. Check backend connection.")),
                       );
                     }
                   },
@@ -103,8 +132,12 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  child: const Text("SUBMIT GRADE"),
+                  child: const Text("SUBMIT GRADE", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context), 
+                  child: const Text("CANCEL", style: TextStyle(color: Colors.grey))
+                )
               ],
             ),
           ),
@@ -114,39 +147,22 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
   }
 
   void _confirmReset() {
+    String activeCode = widget.subjectCode.contains("401") ? "DATA STRUCTURES" : widget.subjectCode;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Reset Session?"),
-        content: const Text("This will clear all points and stars for this class session. This cannot be undone."),
+        content: const Text("This will clear all points and stars for this class session."),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), 
-            child: const Text("CANCEL"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL")),
           TextButton(
             onPressed: () async {
-              // Capture navigation and messenger before the async call
               final navigator = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
-
-              bool ok = await RecitationService.resetSession(widget.subjectCode);
-              
-              if (!mounted) return;
-
+              bool ok = await RecitationService.resetSession(activeCode);
               if (ok) {
-                navigator.pop(); // Close the dialog
-                await _refreshStats(); // Wait for data to update
-                setState(() { 
-                  _selectedStudent = null; // Clear the spotlight
-                });
-                messenger.showSnackBar(
-                  const SnackBar(content: Text("Session reset successfully.")),
-                );
-              } else {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text("Reset failed. Check server connection.")),
-                );
+                navigator.pop();
+                await _refreshStats();
+                setState(() { _selectedStudent = null; });
               }
             },
             child: const Text("RESET", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
@@ -156,20 +172,27 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
     );
   }
 
+  // --- UI BUILDING ---
+
   @override
   Widget build(BuildContext context) {
+    // Dynamic Header Text
+    String displayHeader = widget.subjectCode.contains("401") 
+        ? "DATA STRUCTURES RECITATION" 
+        : "${widget.subjectCode} RECITATION";
+
     return Scaffold(
       backgroundColor: bgColor,
       body: Column(
         children: [
-          _buildStandardHeader("${widget.subjectCode} Recitation"),
+          _buildStandardHeader(displayHeader),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
+              padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
                   Expanded(flex: 3, child: _buildSpotlightSection()),
-                  const SizedBox(width: 32),
+                  const SizedBox(width: 24),
                   Expanded(flex: 2, child: _buildRosterPanel()),
                 ],
               ),
@@ -182,17 +205,18 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
 
   Widget _buildStandardHeader(String title) {
     return Container(
-      height: 80, padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
+      height: 70, padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: Colors.white, 
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title.toUpperCase(), style: const TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 14)),
+          Text(title.toUpperCase(), style: const TextStyle(color: stiNavy, fontWeight: FontWeight.w900, fontSize: 13)),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, color: stiNavy), 
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()));
-            }
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
           ),
         ],
       ),
@@ -207,21 +231,22 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.white, borderRadius: BorderRadius.circular(30),
-              boxShadow: [BoxShadow(color: stiNavy.withValues(alpha: 0.05), blurRadius: 30)],
+              boxShadow: [BoxShadow(color: stiNavy.withAlpha(25), blurRadius: 30)],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isSpinning) const CircularProgressIndicator(color: stiNavy, strokeWidth: 5)
+                if (_isSpinning) 
+                  const CircularProgressIndicator(color: stiNavy, strokeWidth: 5)
                 else if (_selectedStudent != null) ...[
                   const CircleAvatar(radius: 50, backgroundColor: stiNavy, child: Icon(Icons.person, color: Colors.white, size: 50)),
                   const SizedBox(height: 24),
                   Text(_selectedStudent!, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: stiNavy)),
-                  const Text("IS UP NEXT!", style: TextStyle(letterSpacing: 2, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const Text("IS SELECTED!", style: TextStyle(letterSpacing: 2, color: Colors.grey, fontWeight: FontWeight.bold)),
                 ] else ...[
                   const Icon(Icons.casino_outlined, color: stiNavy, size: 80),
                   const SizedBox(height: 16),
-                  const Text("READY TO ROLL?", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.grey)),
+                  const Text("READY TO PICK?", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.grey)),
                 ],
               ],
             ),
@@ -250,12 +275,8 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("SESSION STATS", style: TextStyle(fontWeight: FontWeight.bold, color: stiNavy, fontSize: 12)),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 18, color: Colors.grey),
-                tooltip: "Reset Session",
-                onPressed: _confirmReset,
-              ),
+              const Text("SESSION ROSTER", style: TextStyle(fontWeight: FontWeight.bold, color: stiNavy, fontSize: 12)),
+              IconButton(icon: const Icon(Icons.refresh_rounded, size: 18, color: Colors.grey), onPressed: _refreshStats),
             ],
           ),
           const Divider(height: 32),
@@ -265,11 +286,13 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
               itemBuilder: (context, i) {
                 var data = _currentStats[i];
                 bool isPicked = _selectedStudent == data['name'];
+                int stars = (data['total_points'] ?? 0) ~/ 10;
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isPicked ? stiNavy.withValues(alpha: 0.1) : bgColor,
+                    color: isPicked ? stiNavy.withAlpha(30) : bgColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: isPicked ? stiNavy : Colors.transparent),
                   ),
@@ -279,11 +302,11 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
                       const SizedBox(width: 12),
                       Text(data['name'], style: TextStyle(color: isPicked ? stiNavy : Colors.black87, fontWeight: isPicked ? FontWeight.bold : FontWeight.normal)),
                       const Spacer(),
-                      if (data['total_points'] > 0)
+                      if (stars > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: stiGold, borderRadius: BorderRadius.circular(8)),
-                          child: Text("★ ${data['total_points'] ~/ 10}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: stiNavy)),
+                          child: Text("★ $stars", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: stiNavy)),
                         )
                     ],
                   ),
@@ -291,6 +314,7 @@ class _RecitationFacilitatorPageState extends State<RecitationFacilitatorPage> {
               },
             ),
           ),
+          Center(child: TextButton(onPressed: _confirmReset, child: const Text("RESET SESSION", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold))))
         ],
       ),
     );

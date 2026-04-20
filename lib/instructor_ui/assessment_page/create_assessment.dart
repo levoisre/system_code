@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'quiz_service.dart'; // Ensure this points to your standalone service file
+import 'package:smart_classroom_facilitator_project/quiz_service.dart';
 
 class CreateAssessmentPage extends StatefulWidget {
   final String subjectCode; 
@@ -86,6 +86,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       builder: (context) => const Center(child: CircularProgressIndicator(color: stiNavy)),
     );
 
+    // Format questions to match the Backend 'quiz_questions' table
     List<Map<String, dynamic>> formattedQuestions = List.generate(_questions.length, (i) {
       String uiType = _questions[i]['type'];
       return {
@@ -101,11 +102,11 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       };
     });
 
-    // This calls the QuizService in quiz_service.dart
     bool success = await QuizService.createAssessment(
       subjectCode: widget.subjectCode,
       title: _titleController.text.toUpperCase(),
-      description: "${_durationController.text} min duration",
+      // Standardizing description for simpler duration parsing on student side
+      description: "${_durationController.text}m", 
       questions: formattedQuestions,
     );
 
@@ -114,17 +115,27 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✨ Assessment Published Successfully!")),
+        const SnackBar(
+          content: Text("✨ Assessment Created Successfully!"),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       Navigator.pop(context, true); 
     } else {
-      _showError("Failed to save to server. Is the backend running?");
+      _showError("Failed to save to server. Check your backend connection.");
     }
   }
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      )
+    );
   }
 
   @override
@@ -138,7 +149,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           icon: const Icon(Icons.arrow_back_ios_new, color: stiNavy, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("CREATE NEW ASSESSMENT",
+        title: const Text("CREATE ASSESSMENT",
             style: TextStyle(color: stiNavy, fontWeight: FontWeight.bold, fontSize: 16)),
         centerTitle: true,
       ),
@@ -167,7 +178,9 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
     );
   }
 
-  Widget _buildSectionLabel(String text) => Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, fontSize: 12));
+  // --- WIDGET BUILDERS ---
+
+  Widget _buildSectionLabel(String text) => Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black45, fontSize: 11));
 
   Widget _buildFormCard(bool isWide) {
     return Container(
@@ -178,11 +191,11 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
       ),
       child: isWide ? Row(children: [
-        Expanded(child: _inputField("Assessment Title", "Finals Quiz", _titleController, Icons.title)),
+        Expanded(child: _inputField("Assessment Title", "e.g., Finals Quiz", _titleController, Icons.title)),
         const SizedBox(width: 20),
         SizedBox(width: 150, child: _inputField("Duration (Mins)", "30", _durationController, Icons.timer, isNumeric: true)),
       ]) : Column(children: [
-        _inputField("Assessment Title", "Finals Quiz", _titleController, Icons.title),
+        _inputField("Assessment Title", "e.g., Finals Quiz", _titleController, Icons.title),
         const SizedBox(height: 20),
         _inputField("Duration (Mins)", "30", _durationController, Icons.timer, isNumeric: true),
       ]),
@@ -218,9 +231,9 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       const SizedBox(height: 15),
       TextButton.icon(
         onPressed: _addNewQuestion, 
-        icon: const Icon(Icons.add), 
-        label: const Text("ADD QUESTION"), 
-        style: TextButton.styleFrom(foregroundColor: stiNavy)
+        icon: const Icon(Icons.add_circle_outline), 
+        label: const Text("ADD ANOTHER QUESTION"), 
+        style: TextButton.styleFrom(foregroundColor: stiNavy, textStyle: const TextStyle(fontWeight: FontWeight.bold))
       ),
     ]);
   }
@@ -239,6 +252,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           DropdownButton<String>(
             value: selectedType,
+            underline: const SizedBox(),
             style: const TextStyle(color: stiNavy, fontWeight: FontWeight.bold),
             items: _quizTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
             onChanged: (val) => setState(() => _questions[index]['type'] = val!),
@@ -248,7 +262,8 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
         const SizedBox(height: 10),
         TextField(
           controller: _questionTextControllers[index], 
-          decoration: const InputDecoration(hintText: "Enter question text...", border: UnderlineInputBorder())
+          maxLines: null,
+          decoration: const InputDecoration(hintText: "Enter your question here...", border: UnderlineInputBorder())
         ),
         const SizedBox(height: 20),
         if (selectedType == "Multiple Choice") ...[
@@ -261,8 +276,8 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
           TextField(
             controller: _answerTextControllers[index], 
             decoration: InputDecoration(
-              hintText: selectedType == "Crossword" ? "Keyword" : "Correct answer", 
-              prefixIcon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+              hintText: selectedType == "Crossword" ? "Word Answer" : "Correct Answer", 
+              prefixIcon: const Icon(Icons.check_circle, color: Colors.green, size: 18),
               filled: true,
               fillColor: Colors.green.withValues(alpha: 0.05),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)
@@ -286,7 +301,7 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       itemBuilder: (ctx, i) => TextField(
         controller: _optionControllers[qIndex][i],
         decoration: InputDecoration(
-          hintText: "Choice ${String.fromCharCode(65 + i)}", 
+          hintText: "Option ${String.fromCharCode(65 + i)}", 
           filled: true, 
           fillColor: bgColor, 
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
@@ -313,12 +328,14 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
       padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
-          const Icon(Icons.quiz_outlined, size: 60, color: Colors.black12),
+          const Icon(Icons.post_add_rounded, size: 60, color: Colors.black12),
+          const SizedBox(height: 15),
+          const Text("No questions added yet.", style: TextStyle(color: Colors.black38)),
           const SizedBox(height: 15),
           ElevatedButton(
             onPressed: _addNewQuestion, 
             style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white),
-            child: const Text("START BUILDING"),
+            child: const Text("ADD FIRST QUESTION"),
           ),
         ],
       ),
@@ -327,14 +344,14 @@ class _CreateAssessmentPageState extends State<CreateAssessmentPage> {
 
   Widget _buildActionButtons(bool isWide) {
     return Row(children: [
-      Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL"))),
+      Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("DISCARD"))),
       const SizedBox(width: 15),
       Expanded(
         flex: 2, 
         child: ElevatedButton(
           onPressed: _submitAssessment, 
           style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white, padding: const EdgeInsets.all(15)), 
-          child: const Text("PUBLISH ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold))
+          child: const Text("CREATE ASSESSMENT", style: TextStyle(fontWeight: FontWeight.bold))
         )
       ),
     ]);

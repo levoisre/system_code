@@ -16,8 +16,9 @@ class StudentHome extends StatefulWidget {
 }
 
 class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStateMixin {
-  // --- SUBJECT DATA ---
+  // --- SYNCED SUBJECT DATA ---
   final String subjectName = "MOBILE APPLICATION DEVELOPMENT"; 
+  final String subjectCode = "CPE 401"; // Added for consistency with your database
 
   // --- STATE CONTROL ---
   bool isClockedIn = false;      
@@ -32,7 +33,6 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
   String clockInTime = "--:-- --";
   String clockOutTime = "--:-- --";
   String totalElapsed = "00:00:00"; 
-  double proximityDistance = 1.2; 
   
   DateTime? _startTime;
   Timer? _liveClockTimer; 
@@ -74,12 +74,7 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
         final duration = DateTime.now().difference(_startTime!);
         setState(() {
           totalElapsed = _formatDuration(duration);
-          if (proximityDistance < 2.5) proximityDistance += 0.01;
         });
-
-        if (duration.inSeconds >= 3600) { 
-          _autoClockOut();
-        }
       }
     });
   }
@@ -95,21 +90,9 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
       clockInTime = DateFormat('hh:mm a').format(now);
       _startTime = now;
       isClockedIn = true;
-      isSessionFinished = false;
       showSuccess = true; 
     });
     _startDurationTimer();
-  }
-
-  void _autoClockOut() {
-    if (!isClockedIn) return;
-    setState(() {
-      clockOutTime = DateFormat('hh:mm a').format(DateTime.now());
-      isClockedIn = false;
-      isSessionFinished = true;
-      showFinalSummary = true; 
-      _durationTimer?.cancel();
-    });
   }
 
   void _startScanningProcess() {
@@ -138,18 +121,25 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
         backgroundColor: const Color(0xFF000040), 
         elevation: 4,
         automaticallyImplyLeading: false,
-        title: Text(
-          subjectName.toUpperCase(), 
-          style: const TextStyle(
-            color: Colors.white, 
-            fontSize: 15, 
-            fontWeight: FontWeight.w900, 
-            fontFamily: 'serif',
-            letterSpacing: 1.2
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              subjectCode,
+              style: const TextStyle(color: stiGold, fontSize: 10, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              subjectName.toUpperCase(), 
+              style: const TextStyle(
+                color: Colors.white, 
+                fontSize: 13, 
+                fontWeight: FontWeight.w900, 
+                letterSpacing: 1.1
+              ),
+            ),
+          ],
         ),
         actions: [
-          // Notifications Page integrated in Header
           IconButton(
             icon: const Icon(Icons.notifications, color: Colors.white), 
             onPressed: () => Navigator.push(
@@ -163,27 +153,10 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
       body: Stack(
         children: [
           _buildDashboard(),
-          
-          if (showVerification) 
-            _buildOverlay(child: _buildVerificationCard()),
-          
-          if (isScanning) 
-            _buildOverlay(
-              backgroundColor: Colors.black.withValues(alpha: 0.85), 
-              child: _buildScanningUI()
-            ),
-          
-          if (showSuccess) 
-            _buildOverlay(
-              backgroundColor: darkNavy.withValues(alpha: 0.8), 
-              child: _buildSuccessCard()
-            ),
-          
-          if (showFinalSummary) 
-            _buildOverlay(
-              backgroundColor: Colors.black.withValues(alpha: 0.9), 
-              child: _buildFinalSummaryCard()
-            ),
+          if (showVerification) _buildOverlay(child: _buildVerificationCard()),
+          if (isScanning) _buildOverlay(child: _buildScanningUI()),
+          if (showSuccess) _buildOverlay(child: _buildSuccessCard()),
+          if (showFinalSummary) _buildOverlay(child: _buildFinalSummaryCard()),
         ],
       ),
     );
@@ -195,7 +168,7 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
         children: [
           const SizedBox(height: 30),
           Text(_getDisplayTime(), 
-              style: const TextStyle(fontSize: 90, fontWeight: FontWeight.w900, fontFamily: 'serif', color: darkNavy)),
+              style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, color: darkNavy)),
           Text(DateFormat('EEEE, MMMM d, y').format(DateTime.now()), 
               style: const TextStyle(fontSize: 16, color: Colors.black54)),
           const SizedBox(height: 40),
@@ -210,7 +183,7 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
                     width: 180, height: 180,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isClockedIn ? Colors.green : accentBlue).withValues(alpha: 0.1),
+                      color: (isClockedIn ? Colors.green : accentBlue).withAlpha(25),
                     ),
                   ),
                 ),
@@ -220,36 +193,27 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
                     color: Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 5)
+                      BoxShadow(color: Colors.black.withAlpha(25), blurRadius: 20, spreadRadius: 5)
                     ],
                     border: Border.all(
-                      color: isClockedIn ? Colors.green : Colors.black.withValues(alpha: 0.05),
+                      color: isClockedIn ? Colors.green : Colors.black.withAlpha(12),
                       width: 4,
                     ),
                   ),
                   child: Center(
                     child: Icon(
-                      isClockedIn ? Icons.settings_input_antenna_rounded : Icons.face_retouching_natural_rounded,
+                      isClockedIn ? Icons.wifi_tethering : Icons.face_retouching_natural_rounded,
                       size: 80,
-                      color: isClockedIn ? Colors.green : darkNavy.withValues(alpha: 0.5),
+                      color: isClockedIn ? Colors.green : darkNavy.withAlpha(128),
                     ),
                   ),
                 ),
-                if (isClockedIn)
-                  Positioned(
-                    bottom: 10, right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                      child: const Icon(Icons.check, color: Colors.white, size: 20),
-                    ),
-                  ),
               ],
             ),
           ),
 
           const SizedBox(height: 30),
-          _buildProximityIndicator(),
+          _buildStatusBadge(),
           const SizedBox(height: 40),
           _buildStatsCard(),
         ],
@@ -257,23 +221,22 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildProximityIndicator() {
+  Widget _buildStatusBadge() {
     bool isConnected = isClockedIn;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      margin: const EdgeInsets.symmetric(horizontal: 50),
       decoration: BoxDecoration(
-        color: isConnected ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+        color: isConnected ? Colors.green.withAlpha(25) : Colors.red.withAlpha(25),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: isConnected ? Colors.green : Colors.red, width: 1),
+        border: Border.all(color: isConnected ? Colors.green : Colors.red),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded, color: isConnected ? Colors.green : Colors.red, size: 18),
+          Icon(isConnected ? Icons.check_circle : Icons.warning, color: isConnected ? Colors.green : Colors.red, size: 18),
           const SizedBox(width: 10),
           Text(
-            isConnected ? "Hub Connected" : "Connection Lost",
+            isConnected ? "Smart Classroom Hub Connected" : "Attendance Required",
             style: TextStyle(fontWeight: FontWeight.bold, color: isConnected ? Colors.green : Colors.red),
           ),
         ],
@@ -288,15 +251,13 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(25), 
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 10)]
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
         children: [
           _StatCol(icon: Icons.login, time: clockInTime, label: 'Clock In'),
-          Container(height: 40, width: 1, color: Colors.black.withValues(alpha: 0.05)),
-          _StatCol(icon: Icons.hourglass_bottom, time: totalElapsed, label: 'Elapsed'),
-          Container(height: 40, width: 1, color: Colors.black.withValues(alpha: 0.05)),
+          _StatCol(icon: Icons.timer_outlined, time: totalElapsed, label: 'Session'),
           _StatCol(icon: Icons.logout, time: clockOutTime, label: 'Clock Out'),
         ]
       ),
@@ -306,43 +267,31 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
   Widget _buildVerificationCard() {
     return Center(
       child: Container(
-        width: 330, padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(color: darkNavy, borderRadius: BorderRadius.circular(20)),
+        width: 320, padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(color: darkNavy, borderRadius: BorderRadius.circular(25)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.face_unlock_rounded, color: Colors.white, size: 50),
+            const Icon(Icons.face_unlock_rounded, color: Colors.white, size: 60),
             const SizedBox(height: 20),
-            const Text('Verify Attendance', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'serif')),
+            const Text('Verify Attendance', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
-            
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.5))
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
-                  SizedBox(width: 8),
-                  Text('Hub not yet connected', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
-                ],
-              ),
+            const Text(
+              'Position your face clearly. The system will sync your attendance with the classroom hub.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
-            
-            const SizedBox(height: 15),
-            const Text('The system will establish a connection to the Smart Classroom Hub once your identity is verified.', 
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity, height: 50,
               child: ElevatedButton(
                 onPressed: _startScanningProcess, 
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: darkNavy, shape: const StadiumBorder()),
-                child: const Text('START SCAN', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: stiGold, 
+                  foregroundColor: darkNavy, 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                ),
+                child: const Text('START FACIAL SCAN', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -351,41 +300,39 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildScanningUI() => Column(
-    mainAxisAlignment: MainAxisAlignment.center, 
-    children: [
-      const CircularProgressIndicator(color: Colors.white), 
-      const SizedBox(height: 20), 
-      Text('Establishing Hub Connection...', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16)),
-      const SizedBox(height: 8),
-      const Text('Verifying Identity...', style: TextStyle(color: Colors.white54, fontSize: 12)),
-    ]
+  Widget _buildScanningUI() => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center, 
+      children: [
+        const CircularProgressIndicator(color: stiGold), 
+        const SizedBox(height: 20), 
+        Text('Processing Identity...', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 16, fontWeight: FontWeight.bold)),
+      ]
+    ),
   );
 
   Widget _buildSuccessCard() {
     return Center(
       child: Container(
-        width: 310, padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 25),
-        decoration: BoxDecoration(color: const Color(0xFFF1F4FF), borderRadius: BorderRadius.circular(25)),
+        width: 310, padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 70),
+            const Icon(Icons.verified_user, color: Colors.green, size: 70),
             const SizedBox(height: 20),
-            const Text('IDENTIFIED', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'serif', color: darkNavy)),
+            const Text('IDENTIFIED', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy)),
             const SizedBox(height: 10),
-            // Updated to include that attendance has been marked
             const Text(
-              'Attendance has been marked successfully.',
+              'Attendance has been marked successfully for today.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            const SizedBox(height: 8),
-            Text('Face recognized. Hub connected.\nSession started at: $clockInTime', textAlign: TextAlign.center),
-            const SizedBox(height: 35),
-            GestureDetector(
-              onTap: () => setState(() => showSuccess = false),
-              child: const Text('PROCEED', style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => setState(() => showSuccess = false),
+              style: ElevatedButton.styleFrom(backgroundColor: darkNavy, foregroundColor: Colors.white),
+              child: const Text('PROCEED TO DASHBOARD'),
             ),
           ],
         ),
@@ -401,21 +348,16 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.notification_important, color: Colors.orange, size: 60),
+            const Icon(Icons.logout, color: Colors.redAccent, size: 60),
             const SizedBox(height: 20),
-            const Text('SESSION ENDED', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'serif', color: darkNavy)),
-            const SizedBox(height: 10),
-            const Text('The instructor has ended the class session. You have been clocked out.', textAlign: TextAlign.center),
-            const Divider(height: 40),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text("Duration:"),
-              Text(totalElapsed, style: const TextStyle(fontWeight: FontWeight.bold)),
-            ]),
+            const Text('SESSION ENDED', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkNavy)),
+            const SizedBox(height: 20),
+            Text('Duration: $totalElapsed'),
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: () => setState(() => showFinalSummary = false),
-              style: ElevatedButton.styleFrom(backgroundColor: darkNavy, shape: const StadiumBorder()),
-              child: const Text("RETURN TO DASHBOARD", style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: darkNavy),
+              child: const Text("CLOSE", style: TextStyle(color: Colors.white)),
             )
           ],
         ),
@@ -423,9 +365,9 @@ class _StudentHomeState extends State<StudentHome> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildOverlay({required Widget child, Color? backgroundColor}) => 
+  Widget _buildOverlay({required Widget child}) => 
       Container(
-        color: backgroundColor ?? Colors.black.withValues(alpha: 0.6), 
+        color: Colors.black.withAlpha(200), 
         width: double.infinity, height: double.infinity, 
         child: child
       );
@@ -441,7 +383,7 @@ class _StatCol extends StatelessWidget {
       children: [
         Icon(icon, size: 24, color: darkNavy), 
         const SizedBox(height: 8), 
-        Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: darkNavy)), 
+        Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: darkNavy)), 
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38))
       ]
     );

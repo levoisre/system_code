@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../notification_page/notification.dart';
-import 'quiz_service.dart';
+import 'package:smart_classroom_facilitator_project/quiz_service.dart';
 import 'edit_assessment.dart'; 
 import 'create_assessment.dart'; 
 
@@ -13,13 +13,14 @@ class AssessmentHubPage extends StatefulWidget {
 
 class _AssessmentHubPageState extends State<AssessmentHubPage> {
   static const Color stiNavy = Color(0xFF0D125A);
-  final TextEditingController _searchController = TextEditingController();
   
-  // 1 = Active (Tasks), 2 = Completed, 0 = Archived
+  // Status Filter: 1 = Active (Tasks), 2 = Completed
   int selectedStatus = 1; 
   bool _isLoading = true; 
   String _searchQuery = "";
-  final String currentSubjectCode = "CPE 401";
+  
+  // UPDATED: Syncing with your Data Structures theme
+  final String currentSubjectCode = "DATA STRUCTURES";
 
   List<Map<String, dynamic>> _allQuizzes = [];
 
@@ -40,19 +41,18 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
         setState(() {
           _allQuizzes = List<Map<String, dynamic>>.from(data.map((quiz) => {
             "id": quiz['id'],
+            "subject_code": quiz['subject_code'],
             "title": quiz['title']?.toString().toUpperCase() ?? "UNTITLED",
-            "duration": quiz['description'] ?? "30 min", 
-            "questions": "5", 
-            "points": "50",
-            "due": "Just Now",
-            "status": quiz['is_active'], 
-            "isGiven": false, 
+            "description": quiz['description'] ?? "No description",
+            "status": quiz['is_active'], // 1 for Active, 2 for Completed
+            "isGiven": quiz['is_given'] == 1, 
+            "type": quiz['type'] ?? "MC", // Matches database 'type' column
           }));
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint("❌ Fetch Error: $e");
+      debugPrint("❌ Instructor Fetch Error: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -65,62 +65,40 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     }).toList();
   }
 
-  // Moves an archived quiz back to the Active (Tasks) list
-  Future<void> _unarchiveQuiz(Map<String, dynamic> quiz) async {
-    showDialog(
-      context: context, 
-      barrierDismissible: false, 
-      builder: (c) => const Center(child: CircularProgressIndicator(color: stiNavy))
+  void _toggleQuizStatus(Map<String, dynamic> quiz) async {
+    bool currentGiven = quiz['isGiven'] == true;
+    bool newStatus = !currentGiven;
+
+    // Connects to server.js: app.patch('/api/quiz/give/:quizId')
+    bool success = await QuizService.toggleGiveQuiz(
+      quiz['id'], 
+      newStatus, 
+      quiz['title']
     );
 
-    bool success = await QuizService.updateAssessmentStatus(quiz['id'], 1);
+    if (success && mounted) {
+      setState(() {
+        int index = _allQuizzes.indexWhere((q) => q['id'] == quiz['id']);
+        if (index != -1) {
+          _allQuizzes[index]['isGiven'] = newStatus;
+        }
+      });
 
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading spinner
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Assessment moved back to Tasks"), 
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        )
+      _showSnackBar(
+        newStatus ? "Quiz Published to Students!" : "Quiz Retracted",
+        newStatus ? Colors.green : stiNavy,
       );
-      _fetchQuizzes(); // Refresh list to reflect changes
     }
   }
 
-  void _toggleQuizStatus(Map<String, dynamic> quiz) {
-    setState(() => quiz['isGiven'] = !quiz['isGiven']);
+  void _showSnackBar(String message, Color bgColor) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(quiz['isGiven'] ? "Quiz Published!" : "Quiz Retracted"),
-        backgroundColor: quiz['isGiven'] ? Colors.green : stiNavy,
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: bgColor,
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-
-  Future<void> _navigateAndAddAssessment() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => CreateAssessmentPage(subjectCode: currentSubjectCode)),
-    );
-    if (result == true) _fetchQuizzes(); 
-  }
-
-  Future<void> _navigateAndEditAssessment(Map<String, dynamic> quiz) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => EditAssessmentPage(quizData: quiz)),
-    );
-    if (result == "DELETE_SIGNAL" || result != null) _fetchQuizzes(); 
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   @override
@@ -145,8 +123,6 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     );
   }
 
-  // --- UI COMPONENTS ---
-
   Widget _buildHeader(bool isMobile) {
     return Container(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 20, left: 20, right: 20),
@@ -154,8 +130,14 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("ASSESSMENT HUB", 
-            style: TextStyle(fontSize: isMobile ? 18 : 24, fontWeight: FontWeight.bold, color: stiNavy)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("ASSESSMENT HUB", 
+                style: TextStyle(fontSize: isMobile ? 18 : 22, fontWeight: FontWeight.bold, color: stiNavy)),
+              Text(currentSubjectCode, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_none_rounded, color: stiNavy),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
@@ -176,34 +158,39 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
                 child: TextField(
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: "Search...", 
-                    prefixIcon: const Icon(Icons.search), 
+                    hintText: "Search quizzes...", 
+                    prefixIcon: const Icon(Icons.search, size: 20), 
                     filled: true, 
                     fillColor: Colors.white, 
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _navigateAndAddAssessment, 
-                style: ElevatedButton.styleFrom(backgroundColor: stiNavy, foregroundColor: Colors.white),
-                child: const Text("NEW"),
+              ElevatedButton.icon(
+                onPressed: () async {
+                   final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => CreateAssessmentPage(subjectCode: currentSubjectCode)));
+                   if (result == true) _fetchQuizzes();
+                }, 
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text("NEW"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: stiNavy, 
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                ),
               ),
             ],
           ),
           const SizedBox(height: 15),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _statusChip("TASKS", 1),
-                const SizedBox(width: 8),
-                _statusChip("COMPLETED", 2),
-                const SizedBox(width: 8),
-                _statusChip("ARCHIVED", 0),
-              ],
-            ),
+          Row(
+            children: [
+              _statusChip("TASKS", 1),
+              const SizedBox(width: 8),
+              _statusChip("COMPLETED", 2),
+            ],
           ),
         ],
       ),
@@ -226,9 +213,9 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.black.withValues(alpha: 0.1)),
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.black.withAlpha(30)),
           const SizedBox(height: 16),
-          Text("No assessments found.", style: TextStyle(color: Colors.black.withValues(alpha: 0.4))),
+          Text("No $currentSubjectCode quizzes found.", style: const TextStyle(color: Colors.black45)),
         ],
       ),
     );
@@ -246,10 +233,7 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
     return GridView.builder(
       padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, 
-        crossAxisSpacing: 15, 
-        mainAxisSpacing: 15, 
-        childAspectRatio: 1.4
+        crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 1.6
       ),
       itemCount: _filteredQuizzes.length,
       itemBuilder: (context, index) => _buildQuizCard(_filteredQuizzes[index]),
@@ -257,14 +241,18 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
   }
 
   Widget _buildQuizCard(Map<String, dynamic> quiz) {
-    final bool isGiven = quiz['isGiven'] ?? false;
+    final bool isGiven = quiz['isGiven'] == true;
     final int status = quiz['status'] ?? 1;
+    final String type = quiz['type'] ?? "MC";
 
     return Card(
-      elevation: 0,
+      elevation: isGiven ? 4 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: isGiven ? Colors.green : Colors.black.withValues(alpha: 0.05))
+        side: BorderSide(
+          color: isGiven ? Colors.green : Colors.black.withAlpha(20), 
+          width: isGiven ? 2.0 : 1.0 
+        )
       ),
       child: Padding(
         padding: const EdgeInsets.all(15),
@@ -274,42 +262,61 @@ class _AssessmentHubPageState extends State<AssessmentHubPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: Text(quiz['title'], style: const TextStyle(fontWeight: FontWeight.bold, color: stiNavy))),
-                IconButton(icon: const Icon(Icons.edit_note, color: Colors.grey), onPressed: () => _navigateAndEditAssessment(quiz)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: stiNavy.withAlpha(20),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(type, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: stiNavy)),
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.edit_note, color: Colors.grey, size: 20), 
+                  onPressed: () async {
+                    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditAssessmentPage(quizData: quiz)));
+                    if (result != null) _fetchQuizzes();
+                  }
+                ),
               ],
             ),
-            Text("${quiz['duration']} • ${quiz['questions']} Qs", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 10),
+            Text(
+              quiz['title'], 
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                fontSize: 15,
+                color: isGiven ? Colors.green[800] : stiNavy
+              )
+            ),
+            const SizedBox(height: 4),
+            Text(quiz['description'], 
+              style: const TextStyle(fontSize: 11, color: Colors.grey), 
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis
+            ),
             const Spacer(),
             
-            if (status == 1) // ACTIVE TASKS
+            if (status == 1) 
               SizedBox(
                 width: double.infinity,
+                height: 40,
                 child: ElevatedButton(
                   onPressed: () => _toggleQuizStatus(quiz),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isGiven ? Colors.redAccent : stiNavy, 
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text(isGiven ? "UNGIVE QUIZ" : "GIVE QUIZ"),
+                  child: Text(isGiven ? "RETRACT" : "GIVE QUIZ", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               )
-            else if (status == 0) // ARCHIVED
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _unarchiveQuiz(quiz),
-                  icon: const Icon(Icons.unarchive_outlined, size: 16),
-                  label: const Text("UNARCHIVE"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange, 
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                  ),
-                ),
-              )
-            else // COMPLETED
-              const Center(child: Text("Read-only Mode", style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: Colors.grey))),
+            else 
+              const Center(child: Text("ARCHIVED", style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold))),
           ],
         ),
       ),

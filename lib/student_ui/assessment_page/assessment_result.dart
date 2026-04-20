@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import '../index.dart'; 
 import 'leaderboard.dart';
-
-// Ensure these sub-mode imports match your actual file structure
-import 'result_modes/true_or_false_answer.dart';
+import 'review_screen.dart'; 
 
 class QuizResultsScreen extends StatelessWidget {
+  final int quizId;
   final String quizTitle;
+  final int score;
+  final int totalQuestions;
+  final List<Map<String, dynamic>> studentAnswers;
 
   const QuizResultsScreen({
     super.key, 
-    this.quizTitle = "Assessment Result"
+    required this.quizId,
+    required this.quizTitle,
+    required this.score,
+    required this.totalQuestions,
+    required this.studentAnswers,
   });
 
   static const Color darkNavy = Color(0xFF00084D);
@@ -18,6 +24,8 @@ class QuizResultsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double percentage = (score / totalQuestions) * 100;
+
     return Scaffold(
       backgroundColor: lightBlueBg,
       appBar: AppBar(
@@ -25,7 +33,7 @@ class QuizResultsScreen extends StatelessWidget {
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
-          quizTitle,
+          quizTitle.toUpperCase(),
           style: const TextStyle(
             color: Colors.white, 
             fontSize: 16, 
@@ -35,80 +43,90 @@ class QuizResultsScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 30),
-            _buildPodium(),
-            const SizedBox(height: 25),
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(45)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-                child: Column(
-                  children: [
-                    const Text(
-                      "YOU RANKED 1ST!",
-                      style: TextStyle(
-                        fontSize: 26, 
-                        fontWeight: FontWeight.w900, 
-                        color: darkNavy,
-                        letterSpacing: 1.2,
-                        fontFamily: 'serif'
-                      ),
-                    ),
-                    const SizedBox(height: 25),
-                    _buildStatsGrid(),
-                    const SizedBox(height: 40),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          // FIX: This keeps the UI clean on Desktop while allowing full width on Mobile
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 30),
+                _buildPodium(score), 
+                const SizedBox(height: 25),
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(45)),
+                    // Add subtle shadow for Desktop depth
+                    boxShadow: [
+                      BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -5))
+                    ]
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                    child: Column(
                       children: [
-                        _circleActionButton(Icons.stars_rounded, "Leaderboard", () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LeaderboardScreen()));
+                        Text(
+                          percentage >= 75 ? "EXCELLENT WORK!" : "QUIZ COMPLETED!",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 26, 
+                            fontWeight: FontWeight.w900, 
+                            color: darkNavy,
+                            letterSpacing: 1.2,
+                            fontFamily: 'serif'
+                          ),
+                        ),
+                        const SizedBox(height: 25),
+                        _buildStatsGrid(percentage.toInt()),
+                        const SizedBox(height: 40),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _circleActionButton(Icons.stars_rounded, "Leaderboard", () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const LeaderboardScreen()));
+                            }),
+                            _circleActionButton(Icons.quiz_outlined, "Review Answers", () {
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (context) => AssessmentReviewScreen(
+                                  quizId: quizId,
+                                  quizTitle: quizTitle,
+                                  studentAnswers: studentAnswers,
+                                  totalScore: score,
+                                )
+                              ));
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
+                        const Divider(thickness: 1, color: Colors.black12),
+                        const SizedBox(height: 20),
+
+                        _exitButton(context, "BACK TO ASSESSMENT LIST", true, () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => StudentIndex(initialIndex: 3)),
+                            (Route<dynamic> route) => false,
+                          );
                         }),
-                        _circleActionButton(Icons.quiz_outlined, "Review Answers", () {
-                          // Standardize navigation to the review screen based on your sub-mode structure
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewAnswersScreen()));
+                        
+                        const SizedBox(height: 12),
+                        
+                        _exitButton(context, "GO TO HOME PAGE", false, () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => StudentIndex(initialIndex: 0)),
+                            (Route<dynamic> route) => false,
+                          );
                         }),
+                        const SizedBox(height: 30),
                       ],
                     ),
-                    const SizedBox(height: 40),
-                    const Divider(thickness: 1, color: Colors.black12),
-                    const SizedBox(height: 20),
-
-                    // --- NAVIGATION: BACK TO ASSESSMENT LIST ---
-                    _exitButton(context, "BACK TO ASSESSMENT LIST", true, () {
-                      // Navigator.pushAndRemoveUntil is used to prevent the user 
-                      // from "backing" back into the completed quiz questions.
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => StudentIndex(initialIndex: 3), // Index 3: Assessment Tab
-                        ),
-                        (Route<dynamic> route) => false,
-                      );
-                    }),
-                    
-                    const SizedBox(height: 12),
-                    
-                    // --- NAVIGATION: GO TO HOME PAGE ---
-                    _exitButton(context, "GO TO HOME PAGE", false, () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => StudentIndex(initialIndex: 0), // Index 0: Home Tab
-                        ),
-                        (Route<dynamic> route) => false,
-                      );
-                    }),
-                    const SizedBox(height: 30),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -116,14 +134,14 @@ class QuizResultsScreen extends StatelessWidget {
 
   // --- UI HELPER METHODS ---
 
-  Widget _buildPodium() {
+  Widget _buildPodium(int currentScore) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _pillar("2", "14 pts", 130, Colors.white.withAlpha(180)),
-        _pillar("1", "15 pts", 180, Colors.white),
-        _pillar("3", "13 pts", 110, Colors.white.withAlpha(130)),
+        _pillar("2", "${currentScore - 1} pts", 130, Colors.white.withValues(alpha: 0.7)),
+        _pillar("1", "$currentScore pts", 180, Colors.white),
+        _pillar("3", "${currentScore - 2} pts", 110, Colors.white.withValues(alpha: 0.5)),
       ],
     );
   }
@@ -152,28 +170,28 @@ class QuizResultsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildStatsGrid(int pct) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.black.withAlpha(20)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
-      child: const Column(
+      child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround, 
             children: [
-              _StatTile("100%", "Completion"), 
-              _StatTile("20", "Total Qs")
+              _StatTile("$pct%", "Completion"), 
+              _StatTile("$totalQuestions", "Total Qs")
             ]
           ),
-          Padding(padding: EdgeInsets.symmetric(vertical: 15), child: Divider(thickness: 1, color: Colors.black12)),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 15), child: Divider(thickness: 1, color: Colors.black12)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround, 
             children: [
-              _StatTile("15", "Correct", valueColor: Colors.green), 
-              _StatTile("5", "Incorrect", valueColor: Colors.red)
+              _StatTile("$score", "Correct", valueColor: Colors.green), 
+              _StatTile("${totalQuestions - score}", "Incorrect", valueColor: Colors.red)
             ]
           ),
         ],

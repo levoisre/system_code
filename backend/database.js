@@ -37,20 +37,35 @@ function initializeTables() {
             subject_code TEXT NOT NULL,
             title TEXT NOT NULL,
             description TEXT,
-            is_active INTEGER DEFAULT 0
+            is_active INTEGER DEFAULT 1,
+            is_given INTEGER DEFAULT 0
         )`);
 
         // 4. QUIZ QUESTIONS
-        // Added 'MULTIPLE_CHOICE' to the possible types in your logic
         db.run(`CREATE TABLE IF NOT EXISTS quiz_questions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             quiz_id INTEGER,
-            type TEXT NOT NULL, -- 'TF', 'IDENTIFICATION', 'CROSSWORD', 'MULTIPLE_CHOICE'
+            type TEXT NOT NULL, 
             question_text TEXT NOT NULL,
             correct_answer TEXT NOT NULL,
             hint TEXT,
-            metadata TEXT, -- JSON string for Crossword coords OR Multiple Choice options
-            FOREIGN KEY(quiz_id) REFERENCES quizzes(id)
+            metadata TEXT,
+            row INTEGER DEFAULT 0,
+            col INTEGER DEFAULT 0,
+            dir TEXT DEFAULT 'H',
+            FOREIGN KEY(quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+        )`);
+
+        // 5. QUIZ RESULTS
+        db.run(`CREATE TABLE IF NOT EXISTS quiz_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quiz_id INTEGER,
+            student_name TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            student_answers TEXT, 
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
         )`, (err) => {
             if (!err) {
                 seedInitialData();
@@ -60,56 +75,65 @@ function initializeTables() {
 }
 
 function seedInitialData() {
-    db.get("SELECT COUNT(*) as count FROM students WHERE subject_code = 'CPE 401'", (err, row) => {
+    const subject = 'DATA STRUCTURES';
+    
+    db.get("SELECT COUNT(*) as count FROM quizzes WHERE subject_code = ?", [subject], (err, row) => {
         if (row && row.count === 0) {
-            console.log("🌱 Seeding fresh student and assessment data (including Multiple Choice)...");
+            console.log(`🌱 Seeding Demo Data for: ${subject}...`);
             
+            // --- Seed Students ---
             const studentStmt = db.prepare("INSERT INTO students (name, subject_code, is_present) VALUES (?, ?, ?)");
             const demoStudents = [
-                ['Jet Hinks', 'CPE 401', 1],
-                ['Maria Garcia', 'CPE 401', 1],
-                ['Tony Hugh', 'CPE 401', 1],
-                ['Alex Johnson', 'CPE 401', 1],
-                ['Samuel Pru', 'CPE 401', 1]
+                ['Jet Hinks', subject, 1],
+                ['Maria Garcia', subject, 1],
+                ['Tony Hugh', subject, 1],
+                ['Alex Johnson', subject, 1],
+                ['Claire Anne', subject, 1]
             ];
             demoStudents.forEach(s => studentStmt.run(s));
             studentStmt.finalize();
 
-            db.run("INSERT INTO quizzes (subject_code, title, description, is_active) VALUES ('CPE 401', 'Midterm Assessment', 'Comprehensive Quiz', 1)", function(err) {
-                if (err) return;
-                const quizId = this.lastID;
+            // --- Seed Quizzes ---
+            const quizTypes = [
+                { title: 'ARRAY MASTERY', desc: 'Basics of contiguous memory', type: 'MULTIPLE_CHOICE' },
+                { title: 'LIFO VS FIFO', desc: 'Understanding Stacks and Queues', type: 'TF' },
+                { title: 'BIG O NOTATION', desc: 'Algorithm Analysis', type: 'IDENTIFICATION' },
+                { title: 'DSA CROSSWORD', desc: 'General Data Structures Clues', type: 'CROSSWORD' }
+            ];
 
-                const quizStmt = db.prepare("INSERT INTO quiz_questions (quiz_id, type, question_text, correct_answer, hint, metadata) VALUES (?, ?, ?, ?, ?, ?)");
-                
-                // 1. True or False
-                quizStmt.run([quizId, 'TF', 'Flutter is developed by Microsoft.', 'False', 'Think about Search Engines', null]);
+            quizTypes.forEach((qInfo) => {
+                db.run(`INSERT INTO quizzes (subject_code, title, description, is_active, is_given) 
+                        VALUES (?, ?, ?, 1, 1)`, [subject, qInfo.title, qInfo.desc], function(err) {
+                    
+                    if (err) return;
+                    const quizId = this.lastID;
+                    const qStmt = db.prepare(`INSERT INTO quiz_questions 
+                        (quiz_id, type, question_text, correct_answer, hint, metadata, row, col, dir) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-                // 2. Identification
-                quizStmt.run([quizId, 'IDENTIFICATION', 'What is the programming language used by Flutter?', 'Dart', 'Developed by Google', null]);
+                    if (qInfo.type === 'MULTIPLE_CHOICE') {
+                        qStmt.run([quizId, 'MULTIPLE_CHOICE', 'Time complexity of accessing an element in an array by index?', 'O(1)', 'Constant time', JSON.stringify(['O(1)', 'O(n)', 'O(log n)', 'O(n^2)']), 0, 0, 'H']);
+                        qStmt.run([quizId, 'MULTIPLE_CHOICE', 'Which structure uses a "Next" pointer to connect elements?', 'Linked List', 'Nodes', JSON.stringify(['Stack', 'Array', 'Linked List', 'Hash Table']), 0, 0, 'H']);
+                    } 
+                    else if (qInfo.type === 'TF') {
+                        qStmt.run([quizId, 'TF', 'A Queue follows the Last-In-First-Out (LIFO) principle.', 'False', 'Think of a grocery line', null, 0, 0, 'H']);
+                        qStmt.run([quizId, 'TF', 'Binary Search requires the data to be sorted.', 'True', 'Divide and Conquer', null, 0, 0, 'H']);
+                    } 
+                    else if (qInfo.type === 'IDENTIFICATION') {
+                        qStmt.run([quizId, 'IDENTIFICATION', 'What is the acronym for Last-In-First-Out?', 'LIFO', 'Stack property', null, 0, 0, 'H']);
+                        qStmt.run([quizId, 'IDENTIFICATION', 'Type of list where the last node points back to the first node?', 'Circular Linked List', 'Looping structure', null, 0, 0, 'H']);
+                    } 
+                    else if (qInfo.type === 'CROSSWORD') {
+                        // VERTICAL entry: ARRAY
+                        qStmt.run([quizId, 'CROSSWORD', 'Fixed-size linear structure', 'ARRAY', '5 letters', null, 0, 0, 'V']);
+                        // HORIZONTAL entry: STACK (crosses at index 0,0)
+                        qStmt.run([quizId, 'CROSSWORD', 'LIFO structure', 'STACK', '5 letters', null, 0, 0, 'H']);
+                    }
 
-                // 3. Crossword
-                quizStmt.run([
-                    quizId, 
-                    'CROSSWORD', 
-                    'Lightweight database.', 
-                    'SQLITE', 
-                    'Starts with S', 
-                    JSON.stringify({ "row": 2, "col": 1, "direction": "across" })
-                ]);
-
-                // 4. NEW: Multiple Choice
-                quizStmt.run([
-                    quizId,
-                    'MULTIPLE_CHOICE',
-                    'Which widget is used for repeating lists in Flutter?',
-                    'ListView',
-                    'Efficient for many items',
-                    JSON.stringify(["Column", "Row", "ListView", "Stack"]) // The options
-                ]);
-
-                quizStmt.finalize();
-                console.log("🚀 Database ready with all 4 assessment types.");
+                    qStmt.finalize();
+                });
             });
+            console.log("🚀 Database fully synced with Data Structures content.");
         }
     });
 }

@@ -1,21 +1,34 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:smart_classroom_facilitator_project/quiz_service.dart';
 import '../assessment_result.dart';
 
 class MultipleChoiceQuizScreen extends StatefulWidget {
+  final int quizId; 
   final String quizTitle;
-  const MultipleChoiceQuizScreen({super.key, required this.quizTitle});
+  
+  const MultipleChoiceQuizScreen({
+    super.key, 
+    required this.quizId, 
+    required this.quizTitle
+  });
 
   @override
   State<MultipleChoiceQuizScreen> createState() => _MultipleChoiceQuizScreenState();
 }
 
-class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> with SingleTickerProviderStateMixin {
+class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> {
   static const Color darkNavy = Color(0xFF00084D);
   static const Color stiGold = Color(0xFFFFD100);
   static const Color errorRed = Color(0xFFC0392B);
 
-  // --- STATE ---
+  final List<Map<String, dynamic>> _studentSessionAnswers = [];
+  List<Map<String, dynamic>> _questions = [];
+  
+  int _currentIndex = 0;
+  int _score = 0;
+  bool _isLoading = true;
+
   int _secondsLeft = 30;
   final int _totalTime = 30;
   double _progressValue = 1.0;
@@ -26,11 +39,23 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _loadQuizData();
+  }
+
+  Future<void> _loadQuizData() async {
+    final data = await QuizService.getQuizDetails(widget.quizId);
+    if (mounted) {
+      setState(() {
+        _questions = data;
+        _isLoading = false;
+        if (_questions.isNotEmpty) _startTimer();
+      });
+    }
   }
 
   void _startTimer() {
     _timer?.cancel();
+    _secondsLeft = _totalTime;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_secondsLeft > 0) {
@@ -40,20 +65,67 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
         });
       } else {
         _timer?.cancel();
-        _navigateToResults();
+        _handleAnswerSelection(null); 
       }
     });
   }
 
-  void _navigateToResults() {
+  void _handleAnswerSelection(String? option) async {
+    if (_isNavigating || _selectedOption != null) return;
+
+    String correctAnswer = _questions[_currentIndex]['answer'].toString();
+    bool isCorrect = option != null && option.trim() == correctAnswer.trim();
+    
+    if (isCorrect) _score++;
+
+    _studentSessionAnswers.add({
+      "question_id": _questions[_currentIndex]['id'],
+      "selected_answer": option ?? "Timed Out",
+      "is_correct": isCorrect
+    });
+
+    setState(() => _selectedOption = option);
+
+    _timer?.cancel();
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (_currentIndex < _questions.length - 1) {
+      setState(() {
+        _currentIndex++;
+        _selectedOption = null;
+      });
+      _startTimer();
+    } else {
+      _finalizeQuiz();
+    }
+  }
+
+  void _finalizeQuiz() async {
     if (_isNavigating) return;
+    _isNavigating = true;
+    _timer?.cancel();
+
+    // BACKEND SYNC: Triggers Quicksort logic
+    await QuizService.submitQuizResult(
+      quizId: widget.quizId, 
+      studentName: "Claire Anne", 
+      score: _score,
+      totalQuestions: _questions.length,
+      answers: _studentSessionAnswers,
+      quizTitle: widget.quizTitle,
+    );
+
     if (mounted) {
-      _isNavigating = true;
-      _timer?.cancel();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => QuizResultsScreen(quizTitle: widget.quizTitle),
+          builder: (context) => QuizResultsScreen(
+            quizId: widget.quizId,
+            quizTitle: widget.quizTitle,
+            score: _score,
+            totalQuestions: _questions.length,
+            studentAnswers: _studentSessionAnswers,
+          ),
         ),
       );
     }
@@ -67,6 +139,11 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: darkNavy)));
+
+    final currentQuestion = _questions[_currentIndex];
+    final List<dynamic> options = currentQuestion['options'] ?? [];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
@@ -83,16 +160,19 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
           _buildImmersiveHeader(),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
                 children: [
-                  _buildQuestionCard(),
+                  _buildQuestionCard(currentQuestion['text']),
                   const SizedBox(height: 30),
-                  _buildGamifiedOption("A", "Queue", const Color(0xFF3498DB), Icons.layers),
-                  _buildGamifiedOption("B", "Stack", const Color(0xFF2ECC71), Icons.align_vertical_bottom),
-                  _buildGamifiedOption("C", "Linked List", const Color(0xFFE67E22), Icons.link),
-                  _buildGamifiedOption("D", "Binary Tree", const Color(0xFF9B59B6), Icons.account_tree_outlined),
-                  const SizedBox(height: 30),
+                  ...List.generate(options.length, (index) {
+                    return _buildGamifiedOption(
+                      options[index].toString(), 
+                      options[index].toString(), 
+                      _getOptionColor(index), 
+                      _getOptionIcon(index)
+                    );
+                  }),
                 ],
               ),
             ),
@@ -103,11 +183,19 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
     );
   }
 
+  Color _getOptionColor(int index) {
+    List<Color> colors = [const Color(0xFF3498DB), const Color(0xFF2ECC71), const Color(0xFFE67E22), const Color(0xFF9B59B6)];
+    return colors[index % colors.length];
+  }
+
+  IconData _getOptionIcon(int index) {
+    List<IconData> icons = [Icons.layers, Icons.account_tree_outlined, Icons.link, Icons.code];
+    return icons[index % icons.length];
+  }
+
   Widget _buildPulsingTimerProgress() {
     return Container(
-      height: 8,
-      width: double.infinity,
-      color: Colors.black.withValues(alpha: 0.05),
+      height: 8, width: double.infinity, color: Colors.black12,
       child: FractionallySizedBox(
         alignment: Alignment.centerLeft,
         widthFactor: _progressValue,
@@ -117,7 +205,7 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
             gradient: LinearGradient(
               colors: [
                 _progressValue < 0.3 ? errorRed : const Color(0xFF4A90E2),
-                _progressValue < 0.3 ? errorRed.withValues(alpha: 0.8) : Colors.cyanAccent,
+                _progressValue < 0.3 ? errorRed : Colors.cyanAccent,
               ],
             ),
           ),
@@ -128,16 +216,13 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
 
   Widget _buildImmersiveHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-      decoration: const BoxDecoration(
-        color: darkNavy,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+      color: darkNavy,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _heroBadge(Icons.auto_awesome, "STAGE 4"),
-          _heroBadge(Icons.bolt, "BONUS: 2.5x", isHighlighted: true),
+          _heroBadge(Icons.quiz_outlined, "ITEM ${_currentIndex + 1}/${_questions.length}"),
+          _heroBadge(Icons.stars, "SCORE: $_score", isHighlighted: true),
         ],
       ),
     );
@@ -145,98 +230,64 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
 
   Widget _heroBadge(IconData icon, String text, {bool isHighlighted = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isHighlighted ? stiGold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.1),
+        color: isHighlighted ? stiGold.withAlpha(40) : Colors.white.withAlpha(25),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: isHighlighted ? stiGold : Colors.white24, width: 1.5),
+        border: Border.all(color: isHighlighted ? stiGold : Colors.white24),
       ),
       child: Row(
         children: [
-          Icon(icon, color: isHighlighted ? stiGold : Colors.white, size: 16),
-          const SizedBox(width: 8),
-          Text(text, style: TextStyle(color: isHighlighted ? stiGold : Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+          Icon(icon, color: isHighlighted ? stiGold : Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(text, style: TextStyle(color: isHighlighted ? stiGold : Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
         ],
       ),
     );
   }
 
-  Widget _buildQuestionCard() {
+  Widget _buildQuestionCard(String text) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(35),
+      padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(35),
-        boxShadow: [
-          BoxShadow(color: darkNavy.withValues(alpha: 0.08), blurRadius: 25, offset: const Offset(0, 12))
-        ],
+        color: Colors.white, borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(12), blurRadius: 20)],
       ),
-      child: const Text(
-        "Which data structure uses LIFO (Last In First Out) order?",
+      child: Text(
+        text,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFamily: 'serif', height: 1.4, color: darkNavy),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkNavy),
       ),
     );
   }
 
-  Widget _buildGamifiedOption(String label, String text, Color color, IconData icon) {
-    bool isSelected = _selectedOption == label;
+  Widget _buildGamifiedOption(String value, String text, Color color, IconData icon) {
+    bool isSelected = _selectedOption == value;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
-        onTap: () {
-          if (_isNavigating) return;
-          setState(() => _selectedOption = label);
-          Future.delayed(const Duration(milliseconds: 500), _navigateToResults);
-        },
-        child: AnimatedScale(
-          scale: isSelected ? 0.96 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isSelected ? color : Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: isSelected ? color : Colors.black.withValues(alpha: 0.08), 
-                width: 2.5
+        onTap: () => _handleAnswerSelection(value),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isSelected ? color : Colors.black12, width: 2),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: isSelected ? Colors.white.withAlpha(50) : color.withAlpha(30),
+                child: Icon(icon, color: isSelected ? Colors.white : color, size: 20),
               ),
-              boxShadow: [
-                if (isSelected) 
-                  BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 8))
-                else 
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5, offset: const Offset(0, 2))
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withValues(alpha: 0.25) : color.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: isSelected ? Colors.white : color, size: 22),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Text(text, 
-                    style: TextStyle(
-                      fontSize: 17, 
-                      fontWeight: FontWeight.w800, 
-                      color: isSelected ? Colors.white : Colors.black87
-                    )
-                  ),
-                ),
-                if (isSelected) 
-                  const CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.check, color: Colors.green, size: 16),
-                  ),
-              ],
-            ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(text, 
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black87)),
+              ),
+              if (isSelected) const Icon(Icons.check_circle, color: Colors.white, size: 24),
+            ],
           ),
         ),
       ),
@@ -245,31 +296,23 @@ class _MultipleChoiceQuizScreenState extends State<MultipleChoiceQuizScreen> wit
 
   Widget _buildInteractiveFooter() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(30, 20, 30, 35),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(30, 20, 30, 40),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              Icon(Icons.timer_outlined, color: _secondsLeft < 10 ? errorRed : darkNavy, size: 20),
+              Icon(Icons.timer_sharp, color: _secondsLeft < 10 ? errorRed : darkNavy),
               const SizedBox(width: 8),
-              Text("$_secondsLeft", 
-                style: TextStyle(
-                  fontWeight: FontWeight.w900, 
-                  fontSize: 16, 
-                  color: _secondsLeft < 10 ? errorRed : darkNavy,
-                  fontFamily: 'monospace'
-                )
-              ),
-              Text("s", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: _secondsLeft < 10 ? errorRed : darkNavy)),
+              Text("$_secondsLeft", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _secondsLeft < 10 ? errorRed : darkNavy)),
+              const Text(" s", style: TextStyle(color: Colors.black26, fontSize: 18)),
             ],
           ),
-          const Text("THINK FAST!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.black26, letterSpacing: 2)),
+          const Text("THINK FAST!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.black12, letterSpacing: 2)),
         ],
       ),
     );
